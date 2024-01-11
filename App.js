@@ -1,20 +1,37 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+// App.js
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-export default function App() {
+// Importando as telas
+import Home from "./src/screens/Home";
+import GerarPalpite from "./src/screens/GerarPalpite";
+import Resultados from "./src/screens/Resultados";
+import Historico from "./src/screens/Historico";
+import Sobre from "./src/screens/Sobre";
+
+const Stack = createNativeStackNavigator();
+
+function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen
+          name="Home"
+          component={Home}
+          options={{ headerShown: false }} // Oculta o cabeçalho para a tela Home
+        />
+        <Stack.Screen
+          name="GerarPalpite"
+          component={GerarPalpite}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="Resultados" component={Resultados} />
+        <Stack.Screen name="Historico" component={Historico} />
+        <Stack.Screen name="Sobre" component={Sobre} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
