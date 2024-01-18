@@ -1,15 +1,31 @@
 // src/screens/Home/index.js
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView } from 'react-native';
 import logo from '../../images/logo.png'; // Importação da logo
+import { AppOpenAd, TestIds, AdEventType, BannerAdSize } from 'react-native-google-mobile-ads';
+
+
+
 
 function Home({ navigation }) {
+  const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-0562149345323036/2113244946';
+
+
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView>
+    <ScrollView style={styles.container}>
+    <View >
             <Image source={logo} style={styles.logo} /> 
 
       <Text style={styles.header}>Jogo do Bicho</Text>
-
+      <BannerAd
+        unitId={adUnitId}
+        size={BannerAdSize.SMART_BANNER}
+        requestOptions={{
+          requestNonPersonalizedAdsOnly: true,
+        }}
+      />
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('Gerar Palpite')}>
@@ -34,6 +50,8 @@ function Home({ navigation }) {
         <Text style={styles.buttonText}>Sobre</Text>
       </TouchableOpacity>
     </View>
+    </ScrollView>
+    </SafeAreaView>
   );
 }
 
