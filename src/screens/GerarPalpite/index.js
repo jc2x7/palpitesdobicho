@@ -1,3 +1,64 @@
+/*
+useEffect(() => {
+    let adTimeout;
+  
+    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+      if (!state.isConnected) {
+        setIsLoading(false); // Se não estiver conectado, encerra o loading
+      }
+    });
+  
+    const adLoadedListener = interstitial.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        setLoaded(true);
+        setIsLoading(false); // Encerra o loading quando o anúncio estiver carregado
+      }
+    );
+  
+    const adClosedListener = interstitial.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        navigation.navigate("Orações");
+      }
+    );
+  
+    interstitial.load();
+  
+    // Define um tempo limite para o carregamento do anúncio
+    adTimeout = setTimeout(() => {
+      if (!loaded) {
+        setIsLoading(false); // Encerra o loading se o anúncio não carregar em tempo hábil
+      }
+    }, 10000); // 10 segundos para o tempo limite
+  
+    return () => {
+      clearTimeout(adTimeout);
+      unsubscribeNetInfo();
+      adLoadedListener();
+      adClosedListener();
+    };
+  }, []);
+
+const navigateToScreen = () => {
+    if (isConnected && loaded) {
+      try {
+        interstitial.show();
+      } catch (error) {
+        navigation.navigate("Orações"); // Navegação alternativa se o anúncio não puder ser exibido
+      }
+    } else {
+      navigation.navigate("Orações");
+    }
+  };
+
+
+
+  */
+
+
+
 // src/screens/GerarPalpite/index.js
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Share, Platform } from "react-native";
@@ -13,11 +74,24 @@ import {
 const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946";
 const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
 
+const androidAdUnitId_i = "ca-app-pub-0562149345323036/8109147622";
+const iosAdUnitId_i = "ca-app-pub-0562149345323036/4379153155";
+
 const adUnitId = __DEV__
   ? TestIds.ADAPTIVE_BANNER
   : Platform.OS === "ios"
   ? iosAdUnitId_banner
   : androidAdUnitId_banner;
+
+const adUnitId_i = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.OS === "ios"
+  ? iosAdUnitId_i
+  : androidAdUnitId_i;
+
+const interstitial = InterstitialAd.createForAdRequest(adUnitId_i, {
+  keywords: ["LuckyNumbers", "AnimalFortune", "BettingFun ", "WinBigPrizes ", "DailyPredictions "],
+});
 
 function GerarPalpite() {
   const [palpite, setPalpite] = useState({ dezena: '', centena: '', milhar: '', animal: '', frase: '', imagem:'' });
