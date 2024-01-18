@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "PalpitesDoBicho",
+    "slug": "PalpitesDoBicho",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.juliolemosdf.palpitesdobicho",
+      "buildNumber": "2.0.0",
+      "versionCode": 5
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.juliolemosdf.palpitesdobicho",
+      "versionCode": 5
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a4ccb149-f20f-4d6e-89f2-3f5cbc682f29"
+      }
+    },
+    "plugins": [
+      "expo-build-properties",
+      {
+        "ios": {
+          "useFrameworks": "static"
+        }
+      }
+    ],
+    "react-native-google-mobile-ads": {
+      "android_app_id": "ca-app-pub-0562149345323036~3681582686",
+      "ios_app_id": "ca-app-pub-0562149345323036~3681582686"
+    }
+  }
+}

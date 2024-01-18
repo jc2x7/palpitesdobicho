@@ -1,45 +1,5 @@
 /*
-useEffect(() => {
-    let adTimeout;
-  
-    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
-      setIsConnected(state.isConnected);
-      if (!state.isConnected) {
-        setIsLoading(false); // Se não estiver conectado, encerra o loading
-      }
-    });
-  
-    const adLoadedListener = interstitial.addAdEventListener(
-      AdEventType.LOADED,
-      () => {
-        setLoaded(true);
-        setIsLoading(false); // Encerra o loading quando o anúncio estiver carregado
-      }
-    );
-  
-    const adClosedListener = interstitial.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        navigation.navigate("Orações");
-      }
-    );
-  
-    interstitial.load();
-  
-    // Define um tempo limite para o carregamento do anúncio
-    adTimeout = setTimeout(() => {
-      if (!loaded) {
-        setIsLoading(false); // Encerra o loading se o anúncio não carregar em tempo hábil
-      }
-    }, 10000); // 10 segundos para o tempo limite
-  
-    return () => {
-      clearTimeout(adTimeout);
-      unsubscribeNetInfo();
-      adLoadedListener();
-      adClosedListener();
-    };
-  }, []);
+
 
 const navigateToScreen = () => {
     if (isConnected && loaded) {
@@ -57,12 +17,20 @@ const navigateToScreen = () => {
 
   */
 
-
-
 // src/screens/GerarPalpite/index.js
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, Share, Platform } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Share,
+  Platform,
+  ScrollView,
+  SafeAreaView,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   BannerAd,
   BannerAdSize,
@@ -70,6 +38,7 @@ import {
   InterstitialAd,
   AdEventType,
 } from "react-native-google-mobile-ads";
+import NetInfo from "@react-native-community/netinfo";
 
 const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946";
 const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
@@ -90,21 +59,79 @@ const adUnitId_i = __DEV__
   : androidAdUnitId_i;
 
 const interstitial = InterstitialAd.createForAdRequest(adUnitId_i, {
-  keywords: ["LuckyNumbers", "AnimalFortune", "BettingFun ", "WinBigPrizes ", "DailyPredictions "],
+  keywords: [
+    "LuckyNumbers",
+    "AnimalFortune",
+    "BettingFun ",
+    "WinBigPrizes ",
+    "DailyPredictions ",
+  ],
 });
 
 function GerarPalpite() {
-  const [palpite, setPalpite] = useState({ dezena: '', centena: '', milhar: '', animal: '', frase: '', imagem:'' });
+  const [palpite, setPalpite] = useState({
+    dezena: "",
+    centena: "",
+    milhar: "",
+    animal: "",
+    frase: "",
+    imagem: "",
+  });
   const [palpiteGerado, setPalpiteGerado] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loaded, setLoaded] = useState(true);
+  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     verificarPalpiteDoDia();
   }, []);
 
+  useEffect(() => {
+    let adTimeout;
+
+    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+      if (!state.isConnected) {
+        setIsLoading(false); // Se não estiver conectado, encerra o loading
+      }
+    });
+
+    const adLoadedListener = interstitial.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        setLoaded(true);
+        setIsLoading(false); // Encerra o loading quando o anúncio estiver carregado
+      }
+    );
+
+    const adClosedListener = interstitial.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        gerarPalpite();
+      }
+    );
+
+    interstitial.load();
+
+    // Define um tempo limite para o carregamento do anúncio
+    adTimeout = setTimeout(() => {
+      if (!loaded) {
+        setIsLoading(false); // Encerra o loading se o anúncio não carregar em tempo hábil
+      }
+    }, 10000); // 10 segundos para o tempo limite
+
+    return () => {
+      clearTimeout(adTimeout);
+      unsubscribeNetInfo();
+      adLoadedListener();
+      adClosedListener();
+    };
+  }, []);
+
   const verificarPalpiteDoDia = async () => {
     try {
       const dataAtual = new Date().toLocaleDateString();
-      const palpiteSalvo = await AsyncStorage.getItem('palpiteDoDia_teste3');
+      const palpiteSalvo = await AsyncStorage.getItem("palpiteDoDia_teste3");
       if (palpiteSalvo) {
         const { data, palpite } = JSON.parse(palpiteSalvo);
         if (data === dataAtual) {
@@ -115,29 +142,36 @@ function GerarPalpite() {
       }
       setPalpiteGerado(false);
     } catch (error) {
-      console.error('Erro ao verificar o palpite do dia', error);
+      console.error("Erro ao verificar o palpite do dia", error);
     }
   };
 
   const salvarPalpite = async (novoPalpite) => {
     try {
       const dataAtual = new Date().toLocaleDateString();
-      const palpiteDoDia = JSON.stringify({ data: dataAtual, palpite: novoPalpite });
-      await AsyncStorage.setItem('palpiteDoDia_teste3', palpiteDoDia);
+      const palpiteDoDia = JSON.stringify({
+        data: dataAtual,
+        palpite: novoPalpite,
+      });
+      await AsyncStorage.setItem("palpiteDoDia_teste3", palpiteDoDia);
       setPalpite(novoPalpite);
       setPalpiteGerado(true);
-      const historicoSalvo = await AsyncStorage.getItem('historicoPalpites_teste3');
-    const historico = historicoSalvo ? JSON.parse(historicoSalvo) : [];
-    historico.unshift({ data: dataAtual, ...novoPalpite }); // Adiciona ao início da lista
-    if (historico.length > 14) {
-      historico.pop(); // Mantém apenas os últimos 14 palpites
-    }
-    await AsyncStorage.setItem('historicoPalpites_teste3', JSON.stringify(historico));
+      const historicoSalvo = await AsyncStorage.getItem(
+        "historicoPalpites_teste3"
+      );
+      const historico = historicoSalvo ? JSON.parse(historicoSalvo) : [];
+      historico.unshift({ data: dataAtual, ...novoPalpite }); // Adiciona ao início da lista
+      if (historico.length > 14) {
+        historico.pop(); // Mantém apenas os últimos 14 palpites
+      }
+      await AsyncStorage.setItem(
+        "historicoPalpites_teste3",
+        JSON.stringify(historico)
+      );
     } catch (error) {
-      console.error('Erro ao salvar o palpite', error);
+      console.error("Erro ao salvar o palpite", error);
     }
   };
-
 
   /*
 const salvarPalpite = async (novoPalpite) => {
@@ -160,26 +194,30 @@ const salvarPalpite = async (novoPalpite) => {
 };
   */
 
-const compartilharNoWhatsApp = async () => {
-  try {
-    const mensagem = `Confira o meu palpite do dia:\n\n` +
-      `*Animal:* ${palpite.animal}\n` +
-      `*Dezena:* ${palpite.dezena}\n` +
-      `*Centena:* ${palpite.centena}\n` +
-      `*Milhar:* ${palpite.milhar}\n` +
-      `*Frase:* ${palpite.frase}\n\n` +
-      `*Baixe para Android*: https://play.google.com/store/apps/details?id=juliolemos.jogodobicho&pli=1\n\n` +
-      `*Baixe para iOS*: https://apps.apple.com/app/id1635698709`;
+  const compartilharNoWhatsApp = async () => {
+    try {
+      const mensagem =
+        `Confira o meu palpite do dia:\n\n` +
+        `*Animal:* ${palpite.animal}\n` +
+        `*Dezena:* ${palpite.dezena}\n` +
+        `*Centena:* ${palpite.centena}\n` +
+        `*Milhar:* ${palpite.milhar}\n` +
+        `*Frase:* ${palpite.frase}\n\n` +
+        `*Baixe para Android*: https://play.google.com/store/apps/details?id=juliolemos.jogodobicho&pli=1\n\n` +
+        `*Baixe para iOS*: https://apps.apple.com/app/id1635698709`;
 
-    await Share.share({
-      message: mensagem,
-      // Para iOS, a URL é inclusa na mensagem
-      url: Platform.OS === 'android' ? 'whatsapp://send?text=' + mensagem : undefined,
-    });
-  } catch (error) {
-    console.error('Erro ao compartilhar no WhatsApp', error);
-  }
-};
+      await Share.share({
+        message: mensagem,
+        // Para iOS, a URL é inclusa na mensagem
+        url:
+          Platform.OS === "android"
+            ? "whatsapp://send?text=" + mensagem
+            : undefined,
+      });
+    } catch (error) {
+      console.error("Erro ao compartilhar no WhatsApp", error);
+    }
+  };
 
   const gerarNumeroAleatorio = (min, max) => {
     const range = max - min + 1;
@@ -255,10 +293,28 @@ const compartilharNoWhatsApp = async () => {
     const imagem = imagensAnimais[animal];
     const frase = getFraseAleatoria(animal); // Use o novo valor de 'animal' aqui
 
-    
     setPalpite({ dezena: numeroBase, centena, milhar, animal, imagem, frase });
-    const novoPalpite = { dezena: numeroBase, centena, milhar, animal, imagem, frase };
+    const novoPalpite = {
+      dezena: numeroBase,
+      centena,
+      milhar,
+      animal,
+      imagem,
+      frase,
+    };
     salvarPalpite(novoPalpite);
+  };
+
+  const navigateToScreen = () => {
+    if (isConnected && loaded) {
+      try {
+        interstitial.show();
+      } catch (error) {
+        gerarPalpite; // Navegação alternativa se o anúncio não puder ser exibido
+      }
+    } else {
+      gerarPalpite;
+    }
   };
   //frases
   const frases = [
@@ -371,105 +427,105 @@ const compartilharNoWhatsApp = async () => {
     "Neste {data}, o {animal} incentiva a manter um espírito aventureiro",
     "Hoje, {data}, o {animal} é um lembrete de que cada dia é uma nova oportunidade",
     "Hoje, {data}, o {animal} simboliza um novo ciclo de energia e vitalidade.",
-"Em {data}, o {animal} te lembra da beleza em cada pequeno momento.",
-"{animal} deste {data} é um convite para abraçar a mudança com otimismo.",
-"Neste {data}, o {animal} representa a força para realizar sonhos e desejos.",
-"Hoje, {data}, o {animal} incentiva a construir laços fortes e significativos.",
-"Em {data}, o {animal} traz uma mensagem de perseverança e esperança.",
-"{animal} de {data} sugere um dia de conquistas e sucessos.",
-"Neste {data}, o {animal} é um lembrete para apreciar as maravilhas da vida.",
-"Hoje, {data}, o {animal} simboliza a importância da autenticidade e sinceridade.",
-"{animal} deste {data} encoraja a explorar novos caminhos e ideias.",
-"Em {data}, o {animal} te inspira a buscar a sabedoria e a compreensão.",
-"Hoje, {data}, o {animal} representa a capacidade de superar dificuldades.",
-"Neste {data}, o {animal} é um sinal de progresso e desenvolvimento.",
-"{animal} de {data} incentiva a celebração de cada conquista, grande ou pequena.",
-"Em {data}, o {animal} simboliza a importância da paciência e persistência.",
-"Hoje, {data}, o {animal} destaca a necessidade de equilíbrio e moderação.",
-"{animal} deste {data} é um lembrete da força que vem da calma e tranquilidade.",
-"Neste {data}, o {animal} incentiva a apreciar a jornada, não apenas o destino.",
-"Hoje, {data}, o {animal} te lembra de valorizar cada experiência de vida.",
-"Em {data}, o {animal} é um convite para se conectar com a sua essência.",
-"{animal} de {data} sugere um dia para renovar a energia e o foco.",
-"Neste {data}, o {animal} representa a alegria de viver plenamente.",
-"Hoje, {data}, o {animal} encoraja a encontrar a beleza em tudo ao seu redor.",
-"Em {data}, o {animal} simboliza a união e o poder da comunidade.",
-"{animal} deste {data} traz a promessa de crescimento e aprendizado.",
-"Neste {data}, o {animal} é um símbolo de gratidão e apreciação.",
-"Hoje, {data}, o {animal} te lembra da importância de seguir seu coração.",
-"Em {data}, o {animal} incentiva a expressão de suas ideias e pensamentos.",
-"{animal} de {data} é um lembrete para tomar ações com confiança e determinação.",
-"Neste {data}, o {animal} sugere um momento ideal para reflexão e introspecção.",
-"Hoje, {data}, o {animal} representa a liberdade de escolher seu próprio caminho.",
-"Em {data}, o {animal} te inspira a abraçar novas possibilidades e aventuras.",
-"{animal} deste {data} destaca a importância da resiliência e adaptabilidade.",
-"Neste {data}, o {animal} é um lembrete para celebrar a diversidade e a unicidade.",
-"Hoje, {data}, o {animal} simboliza a força para enfrentar qualquer desafio.",
-"Em {data}, o {animal} traz uma mensagem de conforto e segurança.",
-"{animal} de {data} incentiva a manter um espírito de curiosidade e exploração.",
-"Neste {data}, o {animal} é um sinal de renovação e novos começos.",
-"Hoje, {data}, o {animal} te lembra de perseguir seus objetivos com paixão.",
-"Em {data}, o {animal} simboliza a importância de manter a fé e a esperança.",
-"{animal} deste {data} destaca a necessidade de estar presente e consciente.",
-"Neste {data}, o {animal} encoraja a expressar amor e gratidão.",
-"Hoje, {data}, o {animal} representa a capacidade de transformar desafios em oportunidades.",
-"Em {data}, o {animal} é um lembrete da beleza em ser generoso e altruísta.",
-"{animal} de {data} incentiva a reconhecer e valorizar suas próprias conquistas.",
-"Neste {data}, o {animal} simboliza a jornada em direção à autoconsciência.",
-"Hoje, {data}, o {animal} te lembra de abraçar a sua jornada única.",
-"Em {data}, o {animal} é um convite para viver com propósito e intenção.",
-"{animal} deste {data} destaca a importância de seguir sua intuição.",
-"Neste {data}, o {animal} simboliza a alegria de compartilhar momentos e experiências.",
-"No dia {data}, deixe o {animal} ser um sinal de alegria e celebração.",
-"Hoje, {data}, o {animal} traz a promessa de descobertas emocionantes.",
-"A presença do {animal} neste {data} indica uma jornada de crescimento pessoal.",
-"Em {data}, o {animal} ressalta a importância da coragem e da audácia.",
-"{animal} de {data} é um convite para abraçar novos começos.",
-"Este {data} é um momento perfeito para reflexão, inspirado pelo {animal}.",
-"Hoje, {data}, o {animal} simboliza a harmonia e a paz interior.",
-"Em {data}, o {animal} encoraja a busca por felicidade e satisfação.",
-"{animal} deste {data} te incentiva a encontrar beleza no cotidiano.",
-"Neste {data}, o {animal} lembra a você a importância da perseverança.",
-"Hoje, {data}, o {animal} destaca a necessidade de ser verdadeiro e autêntico.",
-"Em {data}, o {animal} é um símbolo de esperança e renovação.",
-"{animal} de {data} traz uma energia de vitalidade e entusiasmo.",
-"Neste {data}, o {animal} representa a capacidade de superar obstáculos.",
-"Hoje, {data}, o {animal} te encoraja a valorizar momentos de quietude e calma.",
-"{animal} deste {data} lembra a você de celebrar suas conquistas e vitórias.",
-"Em {data}, o {animal} sugere um tempo para fortalecer laços familiares e amizades.",
-"{animal} de {data} é um lembrete da importância de cuidar da saúde mental e física.",
-"Neste {data}, o {animal} simboliza a transformação e o crescimento pessoal.",
-"Hoje, {data}, o {animal} incentiva a explorar novos territórios e ideias.",
-"Em {data}, o {animal} representa a força para encarar novos desafios.",
-"{animal} deste {data} é um símbolo de sabedoria e discernimento.",
-"Hoje, {data}, o {animal} te lembra de buscar equilíbrio e moderação.",
-"Neste {data}, o {animal} traz uma mensagem de confiança e autoestima.",
-"{animal} de {data} incentiva a celebração da sua individualidade única.",
-"Em {data}, o {animal} simboliza uma chance para renovação e mudança.",
-"Hoje, {data}, o {animal} é um convite para praticar gratidão e apreciação.",
-"{animal} deste {data} destaca a importância de se conectar com a natureza.",
-"Neste {data}, o {animal} incentiva a viver cada momento com paixão.",
-"Em {data}, o {animal} lembra você de buscar sabedoria nas experiências.",
-"Hoje, {data}, o {animal} simboliza a unidade e a colaboração.",
-"{animal} de {data} incentiva a busca por crescimento espiritual e iluminação.",
-"Neste {data}, o {animal} é um lembrete da beleza da simplicidade.",
-"Em {data}, o {animal} te convida a reconhecer e celebrar suas habilidades.",
-"Hoje, {data}, o {animal} representa a importância de se adaptar a mudanças.",
-"{animal} deste {data} simboliza a liberdade e a independência.",
-"Neste {data}, o {animal} encoraja a enfrentar seus medos com bravura.",
-"Hoje, {data}, o {animal} destaca a importância da empatia e compreensão.",
-"Em {data}, o {animal} é um lembrete para valorizar a vida em todas as suas formas.",
-"{animal} de {data} incentiva a manter uma mente aberta e curiosa.",
-"Neste {data}, o {animal} simboliza a capacidade de encontrar soluções criativas.",
-"Hoje, {data}, o {animal} representa a jornada em busca da verdade.",
-"Em {data}, o {animal} te encoraja a fortalecer a sua voz interior.",
-"{animal} deste {data} é um convite para expressar sua arte e criatividade.",
-"Neste {data}, o {animal} lembra a importância da flexibilidade e adaptação.",
-"Hoje, {data}, o {animal} é um símbolo de ação e iniciativa.",
-"Em {data}, o {animal} sugere um tempo para introspecção e meditação.",
-"{animal} de {data} te incentiva a buscar harmonia e paz.",
-"Neste {data}, o {animal} representa a importância da gentileza e compaixão.",
-"Hoje, {data}, o {animal} destaca a necessidade de celebração e alegria."
+    "Em {data}, o {animal} te lembra da beleza em cada pequeno momento.",
+    "{animal} deste {data} é um convite para abraçar a mudança com otimismo.",
+    "Neste {data}, o {animal} representa a força para realizar sonhos e desejos.",
+    "Hoje, {data}, o {animal} incentiva a construir laços fortes e significativos.",
+    "Em {data}, o {animal} traz uma mensagem de perseverança e esperança.",
+    "{animal} de {data} sugere um dia de conquistas e sucessos.",
+    "Neste {data}, o {animal} é um lembrete para apreciar as maravilhas da vida.",
+    "Hoje, {data}, o {animal} simboliza a importância da autenticidade e sinceridade.",
+    "{animal} deste {data} encoraja a explorar novos caminhos e ideias.",
+    "Em {data}, o {animal} te inspira a buscar a sabedoria e a compreensão.",
+    "Hoje, {data}, o {animal} representa a capacidade de superar dificuldades.",
+    "Neste {data}, o {animal} é um sinal de progresso e desenvolvimento.",
+    "{animal} de {data} incentiva a celebração de cada conquista, grande ou pequena.",
+    "Em {data}, o {animal} simboliza a importância da paciência e persistência.",
+    "Hoje, {data}, o {animal} destaca a necessidade de equilíbrio e moderação.",
+    "{animal} deste {data} é um lembrete da força que vem da calma e tranquilidade.",
+    "Neste {data}, o {animal} incentiva a apreciar a jornada, não apenas o destino.",
+    "Hoje, {data}, o {animal} te lembra de valorizar cada experiência de vida.",
+    "Em {data}, o {animal} é um convite para se conectar com a sua essência.",
+    "{animal} de {data} sugere um dia para renovar a energia e o foco.",
+    "Neste {data}, o {animal} representa a alegria de viver plenamente.",
+    "Hoje, {data}, o {animal} encoraja a encontrar a beleza em tudo ao seu redor.",
+    "Em {data}, o {animal} simboliza a união e o poder da comunidade.",
+    "{animal} deste {data} traz a promessa de crescimento e aprendizado.",
+    "Neste {data}, o {animal} é um símbolo de gratidão e apreciação.",
+    "Hoje, {data}, o {animal} te lembra da importância de seguir seu coração.",
+    "Em {data}, o {animal} incentiva a expressão de suas ideias e pensamentos.",
+    "{animal} de {data} é um lembrete para tomar ações com confiança e determinação.",
+    "Neste {data}, o {animal} sugere um momento ideal para reflexão e introspecção.",
+    "Hoje, {data}, o {animal} representa a liberdade de escolher seu próprio caminho.",
+    "Em {data}, o {animal} te inspira a abraçar novas possibilidades e aventuras.",
+    "{animal} deste {data} destaca a importância da resiliência e adaptabilidade.",
+    "Neste {data}, o {animal} é um lembrete para celebrar a diversidade e a unicidade.",
+    "Hoje, {data}, o {animal} simboliza a força para enfrentar qualquer desafio.",
+    "Em {data}, o {animal} traz uma mensagem de conforto e segurança.",
+    "{animal} de {data} incentiva a manter um espírito de curiosidade e exploração.",
+    "Neste {data}, o {animal} é um sinal de renovação e novos começos.",
+    "Hoje, {data}, o {animal} te lembra de perseguir seus objetivos com paixão.",
+    "Em {data}, o {animal} simboliza a importância de manter a fé e a esperança.",
+    "{animal} deste {data} destaca a necessidade de estar presente e consciente.",
+    "Neste {data}, o {animal} encoraja a expressar amor e gratidão.",
+    "Hoje, {data}, o {animal} representa a capacidade de transformar desafios em oportunidades.",
+    "Em {data}, o {animal} é um lembrete da beleza em ser generoso e altruísta.",
+    "{animal} de {data} incentiva a reconhecer e valorizar suas próprias conquistas.",
+    "Neste {data}, o {animal} simboliza a jornada em direção à autoconsciência.",
+    "Hoje, {data}, o {animal} te lembra de abraçar a sua jornada única.",
+    "Em {data}, o {animal} é um convite para viver com propósito e intenção.",
+    "{animal} deste {data} destaca a importância de seguir sua intuição.",
+    "Neste {data}, o {animal} simboliza a alegria de compartilhar momentos e experiências.",
+    "No dia {data}, deixe o {animal} ser um sinal de alegria e celebração.",
+    "Hoje, {data}, o {animal} traz a promessa de descobertas emocionantes.",
+    "A presença do {animal} neste {data} indica uma jornada de crescimento pessoal.",
+    "Em {data}, o {animal} ressalta a importância da coragem e da audácia.",
+    "{animal} de {data} é um convite para abraçar novos começos.",
+    "Este {data} é um momento perfeito para reflexão, inspirado pelo {animal}.",
+    "Hoje, {data}, o {animal} simboliza a harmonia e a paz interior.",
+    "Em {data}, o {animal} encoraja a busca por felicidade e satisfação.",
+    "{animal} deste {data} te incentiva a encontrar beleza no cotidiano.",
+    "Neste {data}, o {animal} lembra a você a importância da perseverança.",
+    "Hoje, {data}, o {animal} destaca a necessidade de ser verdadeiro e autêntico.",
+    "Em {data}, o {animal} é um símbolo de esperança e renovação.",
+    "{animal} de {data} traz uma energia de vitalidade e entusiasmo.",
+    "Neste {data}, o {animal} representa a capacidade de superar obstáculos.",
+    "Hoje, {data}, o {animal} te encoraja a valorizar momentos de quietude e calma.",
+    "{animal} deste {data} lembra a você de celebrar suas conquistas e vitórias.",
+    "Em {data}, o {animal} sugere um tempo para fortalecer laços familiares e amizades.",
+    "{animal} de {data} é um lembrete da importância de cuidar da saúde mental e física.",
+    "Neste {data}, o {animal} simboliza a transformação e o crescimento pessoal.",
+    "Hoje, {data}, o {animal} incentiva a explorar novos territórios e ideias.",
+    "Em {data}, o {animal} representa a força para encarar novos desafios.",
+    "{animal} deste {data} é um símbolo de sabedoria e discernimento.",
+    "Hoje, {data}, o {animal} te lembra de buscar equilíbrio e moderação.",
+    "Neste {data}, o {animal} traz uma mensagem de confiança e autoestima.",
+    "{animal} de {data} incentiva a celebração da sua individualidade única.",
+    "Em {data}, o {animal} simboliza uma chance para renovação e mudança.",
+    "Hoje, {data}, o {animal} é um convite para praticar gratidão e apreciação.",
+    "{animal} deste {data} destaca a importância de se conectar com a natureza.",
+    "Neste {data}, o {animal} incentiva a viver cada momento com paixão.",
+    "Em {data}, o {animal} lembra você de buscar sabedoria nas experiências.",
+    "Hoje, {data}, o {animal} simboliza a unidade e a colaboração.",
+    "{animal} de {data} incentiva a busca por crescimento espiritual e iluminação.",
+    "Neste {data}, o {animal} é um lembrete da beleza da simplicidade.",
+    "Em {data}, o {animal} te convida a reconhecer e celebrar suas habilidades.",
+    "Hoje, {data}, o {animal} representa a importância de se adaptar a mudanças.",
+    "{animal} deste {data} simboliza a liberdade e a independência.",
+    "Neste {data}, o {animal} encoraja a enfrentar seus medos com bravura.",
+    "Hoje, {data}, o {animal} destaca a importância da empatia e compreensão.",
+    "Em {data}, o {animal} é um lembrete para valorizar a vida em todas as suas formas.",
+    "{animal} de {data} incentiva a manter uma mente aberta e curiosa.",
+    "Neste {data}, o {animal} simboliza a capacidade de encontrar soluções criativas.",
+    "Hoje, {data}, o {animal} representa a jornada em busca da verdade.",
+    "Em {data}, o {animal} te encoraja a fortalecer a sua voz interior.",
+    "{animal} deste {data} é um convite para expressar sua arte e criatividade.",
+    "Neste {data}, o {animal} lembra a importância da flexibilidade e adaptação.",
+    "Hoje, {data}, o {animal} é um símbolo de ação e iniciativa.",
+    "Em {data}, o {animal} sugere um tempo para introspecção e meditação.",
+    "{animal} de {data} te incentiva a buscar harmonia e paz.",
+    "Neste {data}, o {animal} representa a importância da gentileza e compaixão.",
+    "Hoje, {data}, o {animal} destaca a necessidade de celebração e alegria.",
   ];
 
   const getFraseAleatoria = (animal) => {
@@ -479,7 +535,10 @@ const compartilharNoWhatsApp = async () => {
   };
 
   return (
+  <SafeAreaView>
+    <ScrollView>
     <View style={styles.container}>
+      
       {palpite.imagem && (
         <Image source={palpite.imagem} style={styles.imagemAnimal} />
       )}
@@ -494,24 +553,29 @@ const compartilharNoWhatsApp = async () => {
         </View>
       )}
 
-{palpiteGerado ? (
+      {palpiteGerado ? (
         <View>
-
-          <Text style={styles.fraseText}>Você já tem um palpite para hoje. Aguarde até amanhã para gerar um novo palpite e boa sorte no jogo!</Text>
-          <TouchableOpacity style={styles.shareButton} onPress={compartilharNoWhatsApp}>
-          <Text style={styles.shareButtonText}>Compartilhar no WhatsApp</Text>
-        </TouchableOpacity>
-        
+          <Text style={styles.fraseText}>
+            Você já tem um palpite para hoje. Aguarde até amanhã para gerar um
+            novo palpite e boa sorte no jogo!
+          </Text>
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={compartilharNoWhatsApp}
+          >
+            <Text style={styles.shareButtonText}>Compartilhar no WhatsApp</Text>
+          </TouchableOpacity>
         </View>
+            
+            
+          
       ) : (
         <View>
-             
-
-        <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
-          <Text style={styles.buttonText}>Gerar Palpite</Text>
-        </TouchableOpacity>
-        <View style={{marginBottom:10}}></View>
-        <BannerAd
+          <TouchableOpacity style={styles.button} onPress={navigateToScreen}>
+            <Text style={styles.buttonText}>Gerar Palpite</Text>
+          </TouchableOpacity>
+          <View style={{ marginBottom: 10 }}></View>
+          <BannerAd
             unitId={adUnitId}
             size={BannerAdSize.MEDIUM_RECTANGLE}
             requestOptions={{
@@ -522,8 +586,9 @@ const compartilharNoWhatsApp = async () => {
           />
         </View>
       )}
-
     </View>
+    </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -558,7 +623,7 @@ const styles = StyleSheet.create({
     borderRadius: 125, // Faz a imagem ficar arredondada
     marginTop: 20,
     borderWidth: 2, // Adiciona uma borda de 2px
-    borderColor: 'green', // Define a cor da borda como verde
+    borderColor: "green", // Define a cor da borda como verde
   },
   card: {
     backgroundColor: "#fff", // Fundo branco para o card
@@ -573,14 +638,13 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     width: "70%",
     borderWidth: 2, // Adiciona uma borda de 2px
-    borderColor: 'green', // Define a cor da borda como verde
+    borderColor: "green", // Define a cor da borda como verde
   },
   animalText: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#4caf50", // Cor destacada para o nome do animal
     marginBottom: 15,
-    
   },
   fraseText: {
     fontSize: 16,
@@ -595,12 +659,13 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginTop: 10,
+    marginBottom:15
   },
   shareButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: 'center'
+    textAlign: "center",
   },
 });
 
