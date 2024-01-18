@@ -10,7 +10,7 @@ import {
   AdEventType,
 } from "react-native-google-mobile-ads";
 
-const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946;
+const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946";
 const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
 
 
@@ -22,28 +22,18 @@ const adUnitId = __DEV__
 
 
 function Home({ navigation }) {
-  const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-0562149345323036/2113244946';
 
 
 
   return (
-    <SafeAreaView>
-    <ScrollView style={styles.container}>
-    <View >
+    <SafeAreaView >
+    <ScrollView>
+    <View style={styles.container}>
             <Image source={logo} style={styles.logo} /> 
 
       <Text style={styles.header}>Jogo do Bicho</Text>
         <View style={styles.centerAd}>
-          <BannerAd
-            unitId={adUnitId}
-            size={BannerAdSize.MEDIUM_RECTANGLE}
-            requestOptions={{
-              networkExtras: {
-                collapsible: "bottom",
-              },
-            }}
-          />
-        </View>
+                 </View>
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('Gerar Palpite')}>
@@ -55,6 +45,16 @@ function Home({ navigation }) {
         onPress={() => navigation.navigate('Resultados')}>
         <Text style={styles.buttonText}>Resultados</Text>
       </TouchableOpacity>
+
+      <BannerAd
+            unitId={adUnitId}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              networkExtras: {
+                collapsible: "bottom",
+              },
+            }}
+          />
 
       <TouchableOpacity
         style={styles.button}

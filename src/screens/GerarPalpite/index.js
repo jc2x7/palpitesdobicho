@@ -2,7 +2,22 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Share, Platform } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+  InterstitialAd,
+  AdEventType,
+} from "react-native-google-mobile-ads";
 
+const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946";
+const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
+
+const adUnitId = __DEV__
+  ? TestIds.ADAPTIVE_BANNER
+  : Platform.OS === "ios"
+  ? iosAdUnitId_banner
+  : androidAdUnitId_banner;
 
 function GerarPalpite() {
   const [palpite, setPalpite] = useState({ dezena: '', centena: '', milhar: '', animal: '', frase: '', imagem:'' });
@@ -415,9 +430,23 @@ const compartilharNoWhatsApp = async () => {
         
         </View>
       ) : (
+        <View>
+             
+
         <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
           <Text style={styles.buttonText}>Gerar Palpite</Text>
         </TouchableOpacity>
+        <View style={{marginBottom:10}}></View>
+        <BannerAd
+            unitId={adUnitId}
+            size={BannerAdSize.MEDIUM_RECTANGLE}
+            requestOptions={{
+              networkExtras: {
+                collapsible: "bottom",
+              },
+            }}
+          />
+        </View>
       )}
 
     </View>
