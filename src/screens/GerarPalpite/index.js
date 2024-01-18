@@ -74,12 +74,13 @@ const salvarPalpite = async (novoPalpite) => {
 const compartilharNoWhatsApp = async () => {
   try {
     const mensagem = `Confira o meu palpite do dia:\n\n` +
-      `Animal: ${palpite.animal}\n` +
-      `Dezena: ${palpite.dezena}\n` +
-      `Centena: ${palpite.centena}\n` +
-      `Milhar: ${palpite.milhar}\n` +
-      `Frase: ${palpite.frase}\n\n` +
-      `Compartilhado via App de Palpites`;
+      `*Animal:* ${palpite.animal}\n` +
+      `*Dezena:* ${palpite.dezena}\n` +
+      `*Centena:* ${palpite.centena}\n` +
+      `*Milhar:* ${palpite.milhar}\n` +
+      `*Frase:* ${palpite.frase}\n\n` +
+      `*Baixe para Android*: https://play.google.com/store/apps/details?id=juliolemos.jogodobicho&pli=1\n\n` +
+      `*Baixe para iOS*: https://apps.apple.com/app/id1635698709`;
 
     await Share.share({
       message: mensagem,

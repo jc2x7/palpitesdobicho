@@ -18,7 +18,7 @@ const AboutPage = () => {
 
       <TouchableOpacity
         style={[styles.button, styles.privacyButton]}
-        onPress={() => handleOpenLink('https://TercosGratisCelular')}>
+        onPress={() => handleOpenLink('https://bit.ly/TercosGratisCelular')}>
         <Text style={styles.buttonText}>Aplicativo para rezar o Terço.</Text>
       </TouchableOpacity>
 
