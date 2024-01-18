@@ -1,6 +1,6 @@
 // src/screens/GerarPalpite/index.js
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image, Share, Platform } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
@@ -70,6 +70,26 @@ const salvarPalpite = async (novoPalpite) => {
   }
 };
   */
+
+const compartilharNoWhatsApp = async () => {
+  try {
+    const mensagem = `Confira o meu palpite do dia:\n\n` +
+      `Animal: ${palpite.animal}\n` +
+      `Dezena: ${palpite.dezena}\n` +
+      `Centena: ${palpite.centena}\n` +
+      `Milhar: ${palpite.milhar}\n` +
+      `Frase: ${palpite.frase}\n\n` +
+      `Compartilhado via App de Palpites`;
+
+    await Share.share({
+      message: mensagem,
+      // Para iOS, a URL é inclusa na mensagem
+      url: Platform.OS === 'android' ? 'whatsapp://send?text=' + mensagem : undefined,
+    });
+  } catch (error) {
+    console.error('Erro ao compartilhar no WhatsApp', error);
+  }
+};
 
   const gerarNumeroAleatorio = (min, max) => {
     const range = max - min + 1;
@@ -156,18 +176,18 @@ const salvarPalpite = async (novoPalpite) => {
     "Fique atento(a) aos sinais, pois o {animal} de {data} tem uma surpresa.",
     "Neste dia {data}, o {animal} pode ser um sinal de sorte.",
     "Considere as oportunidades que o {animal} de {data} traz.",
-    "O {animal} de hoje, {data}, sugere um dia de reflexão.",
+    "{animal} de hoje, {data}, sugere um dia de reflexão.",
     "Preste atenção nos detalhes, o {animal} de {data} indica mudanças.",
-    "O {animal} deste dia {data} simboliza crescimento e progresso.",
+    "{animal} deste dia {data} simboliza crescimento e progresso.",
     "Que o {animal} de {data} inspire criatividade e inovação.",
     "Um dia de {data} sob a influência do {animal} promete ser interessante.",
-    "O {animal} de {data} traz uma mensagem de otimismo e esperança.",
+    "{animal} de {data} traz uma mensagem de otimismo e esperança.",
     "Em {data}, o {animal} sinaliza um momento de força e determinação.",
     "A sabedoria do {animal} em {data} te guiará para o sucesso.",
     "Este {data} será especial, graças à energia do {animal}.",
     "Hoje, {data}, o {animal} representa novos começos e oportunidades.",
     "Confie na intuição: o {animal} de {data} traz insights poderosos.",
-    "O {animal} de hoje, {data}, encoraja você a perseguir seus sonhos.",
+    "{animal} de hoje, {data}, encoraja você a perseguir seus sonhos.",
     "Este {data} é sobre aprender e crescer, inspirado pelo {animal}.",
     "O {animal} deste {data} te incentiva a abraçar mudanças.",
     "Em {data}, o {animal} lembra a importância da paciência e do tempo.",
@@ -286,7 +306,12 @@ const salvarPalpite = async (novoPalpite) => {
 
 {palpiteGerado ? (
         <View>
+
           <Text style={styles.fraseText}>Você já tem um palpite para hoje. Aguarde até amanhã para gerar um novo palpite e boa sorte no jogo!</Text>
+          <TouchableOpacity style={styles.shareButton} onPress={compartilharNoWhatsApp}>
+          <Text style={styles.shareButtonText}>Compartilhar no WhatsApp</Text>
+        </TouchableOpacity>
+        
         </View>
       ) : (
         <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
@@ -351,6 +376,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#4caf50", // Cor destacada para o nome do animal
     marginBottom: 15,
+    
   },
   fraseText: {
     fontSize: 16,
@@ -359,6 +385,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 20,
     marginTop: 20,
+  },
+  shareButton: {
+    backgroundColor: "#25D366", // Cor do WhatsApp
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  shareButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: 'center'
   },
 });
 

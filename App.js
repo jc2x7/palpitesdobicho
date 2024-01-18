@@ -22,9 +22,9 @@ function App() {
           options={{ headerShown: false }} // Oculta o cabeçalho para a tela Home
         />
         <Stack.Screen
-          name="GerarPalpite"
+          name="Gerar Palpite"
           component={GerarPalpite}
-          options={{ headerShown: false }}
+          
         />
         <Stack.Screen name="Resultados" component={Resultados} />
         <Stack.Screen name="Historico" component={Historico} />

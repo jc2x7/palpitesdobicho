@@ -12,7 +12,7 @@ function Home({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('GerarPalpite')}>
+        onPress={() => navigation.navigate('Gerar Palpite')}>
         <Text style={styles.buttonText}>Gerar Palpite</Text>
       </TouchableOpacity>
 
