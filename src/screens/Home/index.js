@@ -2,9 +2,23 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView } from 'react-native';
 import logo from '../../images/logo.png'; // Importação da logo
-import { AppOpenAd, TestIds, AdEventType, BannerAdSize } from 'react-native-google-mobile-ads';
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+  InterstitialAd,
+  AdEventType,
+} from "react-native-google-mobile-ads";
+
+const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946;
+const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
 
 
+const adUnitId = __DEV__
+  ? TestIds.ADAPTIVE_BANNER
+  : Platform.OS === "ios"
+  ? iosAdUnitId_banner
+  : androidAdUnitId_banner;
 
 
 function Home({ navigation }) {
@@ -19,13 +33,17 @@ function Home({ navigation }) {
             <Image source={logo} style={styles.logo} /> 
 
       <Text style={styles.header}>Jogo do Bicho</Text>
-      <BannerAd
-        unitId={adUnitId}
-        size={BannerAdSize.SMART_BANNER}
-        requestOptions={{
-          requestNonPersonalizedAdsOnly: true,
-        }}
-      />
+        <View style={styles.centerAd}>
+          <BannerAd
+            unitId={adUnitId}
+            size={BannerAdSize.MEDIUM_RECTANGLE}
+            requestOptions={{
+              networkExtras: {
+                collapsible: "bottom",
+              },
+            }}
+          />
+        </View>
       <TouchableOpacity
         style={styles.button}
         onPress={() => navigation.navigate('Gerar Palpite')}>
@@ -86,6 +104,11 @@ const styles = StyleSheet.create({
     height: 250, // Defina o tamanho conforme necessário
     marginBottom: 20,
     borderRadius: 20, // Arredonda as bordas da imagem
+  },
+  centerAd: {
+    alignItems: "center",
+    marginTop: 5,
+    marginBottom: 5,
   },
 });
 
