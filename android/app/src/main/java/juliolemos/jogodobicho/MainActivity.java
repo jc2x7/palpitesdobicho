@@ -1,4 +1,4 @@
-package com.juliolemosdf.palpitesdobicho;
+package juliolemos.jogodobicho;
 
 import android.os.Build;
 import android.os.Bundle;
