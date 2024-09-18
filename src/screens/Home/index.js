@@ -31,7 +31,7 @@ function Home({ navigation }) {
     <View style={styles.container}>
             <Image source={logo} style={styles.logo} /> 
 
-      <Text style={styles.header}>Jogo do Bicho</Text>
+      <Text style={styles.header}>Gerador de Números</Text>
         <View style={styles.centerAd}>
                  </View>
       <TouchableOpacity
