@@ -21,18 +21,6 @@ const AboutPage = () => {
         onPress={() => handleOpenLink('https://bit.ly/TercosGratisCelular')}>
         <Text style={styles.buttonText}>Aplicativo para rezar o Terço.</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, styles.instagramButton]}
-        onPress={() => handleOpenLink('https://instagram.com/juliolemosdf')}>
-        <Text style={styles.buttonText}>Siga-me no Instagram</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, styles.linkedinButton]}
-        onPress={() => handleOpenLink('https://linkedin.com/in/juliolemosdf')}>
-        <Text style={styles.buttonText}>LinkedIn</Text>
-      </TouchableOpacity>
     </View>
   );
 };

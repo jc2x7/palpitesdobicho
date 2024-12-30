@@ -30,14 +30,12 @@ const App = () => {
     fetchResultadosAtual();
     fetchResultadosAnteriores();
 
-    const handleChange = ({ window }) => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenWidth(window.width);
-    };
-
-    Dimensions.addEventListener('change', handleChange);
+    });
 
     return () => {
-      Dimensions.removeEventListener('change', handleChange);
+      subscription?.remove();
     };
   }, []);
 
@@ -98,7 +96,7 @@ const App = () => {
               <Row
                 data={data.headers}
                 style={styles.header}
-                textStyle={styles.headerText}
+                textStyle={StyleSheet.flatten(styles.headerText)} // Corrigido
                 widthArr={calculateColumnWidths(data.headers.length)}
               />
               {data.rows.map((rowData, index) => (
@@ -109,7 +107,7 @@ const App = () => {
                     styles.row,
                     index % 2 === 0 ? styles.evenRow : styles.oddRow
                   ]}
-                  textStyle={styles.rowText}
+                  textStyle={StyleSheet.flatten(styles.rowText)} // Corrigido
                   widthArr={calculateColumnWidths(rowData.length)}
                 />
               ))}
@@ -119,6 +117,7 @@ const App = () => {
       )}
     </View>
   );
+  
 
   return (
     <SafeAreaView style={styles.container}>
