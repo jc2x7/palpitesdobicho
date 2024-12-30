@@ -1,10 +1,73 @@
 // src/screens/Historico/index.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Image,
+  Dimensions,
+  Animated,
+  PanResponder,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width, height } = Dimensions.get('window');
+
+const imagensAnimais = {
+  Avestruz: require('../../images/animais/Avestruz.png'),
+  Aguia: require('../../images/animais/Aguia.png'),
+  Burro: require('../../images/animais/Burro.png'),
+  Borboleta: require('../../images/animais/Borboleta.png'),
+  Cachorro: require('../../images/animais/Cachorro.png'),
+  Cabra: require('../../images/animais/Cabra.png'),
+  Carneiro: require('../../images/animais/Carneiro.png'),
+  Camelo: require('../../images/animais/Camelo.png'),
+  Cobra: require('../../images/animais/Cobra.png'),
+  Coelho: require('../../images/animais/Coelho.png'),
+  Cavalo: require('../../images/animais/Cavalo.png'),
+  Elefante: require('../../images/animais/Elefante.png'),
+  Galo: require('../../images/animais/Galo.png'),
+  Gato: require('../../images/animais/Gato.png'),
+  Jacare: require('../../images/animais/Jacare.png'),
+  Leao: require('../../images/animais/Leao.png'),
+  Macaco: require('../../images/animais/Macaco.png'),
+  Porco: require('../../images/animais/Porco.png'),
+  Pavao: require('../../images/animais/Pavao.png'),
+  Peru: require('../../images/animais/Peru.png'),
+  Touro: require('../../images/animais/Touro.png'),
+  Tigre: require('../../images/animais/Tigre.png'),
+  Urso: require('../../images/animais/Urso.png'),
+  Veado: require('../../images/animais/Veado.png'),
+  Vaca: require('../../images/animais/Vaca.png'),
+};
 
 function Historico() {
   const [historico, setHistorico] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPalpite, setSelectedPalpite] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const pan = useState(new Animated.ValueXY())[0];
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderRelease: (e, gestureState) => {
+      if (Math.abs(gestureState.dx) > 50) {
+        if (gestureState.dx > 0 && currentIndex > 0) {
+          setCurrentIndex(currentIndex - 1);
+          setSelectedPalpite(historico[currentIndex - 1]);
+        } else if (gestureState.dx < 0 && currentIndex < historico.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+          setSelectedPalpite(historico[currentIndex + 1]);
+        }
+      }
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+    },
+  });
 
   useEffect(() => {
     const carregarHistorico = async () => {
@@ -12,31 +75,105 @@ function Historico() {
         const historicoSalvo = await AsyncStorage.getItem('historicoPalpites_teste3');
         if (historicoSalvo) {
           setHistorico(JSON.parse(historicoSalvo));
+        } else {
+          setHistorico([]);
         }
       } catch (error) {
         console.error('Erro ao carregar o histórico', error);
+        setHistorico([]);
       }
     };
 
     carregarHistorico();
   }, []);
 
+  const abrirModal = (palpite, index) => {
+    setSelectedPalpite(palpite);
+    setCurrentIndex(index);
+    setModalVisible(true);
+  };
+
+  const fecharModal = () => {
+    setSelectedPalpite(null);
+    setModalVisible(false);
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      {historico.map((palpite, index) => (
-        <View key={index} style={styles.card}>
-          <Text style={styles.dataText}>Data: {palpite.data}</Text>
-          <Text style={styles.animalText}>Animal: {palpite.animal}</Text>
-          <Text style={styles.numerosText}>Dezena: {palpite.dezena} | Centena: {palpite.centena} | Milhar: {palpite.milhar}</Text>
+    <View style={styles.container}>
+      <ScrollView>
+        {historico.length > 0 ? (
+          historico.map((palpite, index) => (
+            <TouchableOpacity key={index} style={styles.card} onPress={() => abrirModal(palpite, index)}>
+              <Text style={styles.dataText}>Data: {palpite.data}</Text>
+              <Text style={styles.animalText}>Animal: {palpite.animal}</Text>
+              <Text style={styles.numerosText}>
+                Dezena: {palpite.dezena} | Centena: {palpite.centena} | Milhar: {palpite.milhar}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Nenhum histórico disponível.</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={fecharModal}
+      >
+        <View style={styles.modalBackground}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <TouchableOpacity style={styles.closeButton} onPress={fecharModal}>
+              <Text style={styles.closeButtonText}>X</Text>
+            </TouchableOpacity>
+            {selectedPalpite && (
+              <>
+                {selectedPalpite.animal && imagensAnimais[selectedPalpite.animal] && (
+                  <Image source={imagensAnimais[selectedPalpite.animal]} style={styles.modalImage} />
+                )}
+                <Text style={styles.modalAnimalText}>{selectedPalpite.animal}</Text>
+                <Text style={styles.modalNumerosText}>
+                  Dezena: {selectedPalpite.dezena} | Centena: {selectedPalpite.centena} | Milhar: {selectedPalpite.milhar}
+                </Text>
+                <Text style={styles.modalFraseText}>{selectedPalpite.frase}</Text>
+                {selectedPalpite.legenda !== "" && (
+                  <Text style={styles.modalLegendaText}>{selectedPalpite.legenda}</Text>
+                )}
+              </>
+            )}
+            {historico.length > 0 && (
+              <View style={styles.storyIndicatorContainer}>
+                {historico.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.storyIndicator,
+                      { backgroundColor: index === currentIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)' }
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </Animated.View>
         </View>
-      ))}
-    </ScrollView>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   card: {
     backgroundColor: '#fff',
@@ -62,6 +199,85 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: width,
+    height: height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: 'transparent',
+    zIndex: 1,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 28,
+  },
+  modalImage: {
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  modalAnimalText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+  },
+  modalNumerosText: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalFraseText: {
+    fontSize: 18,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalLegendaText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  storyIndicatorContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    justifyContent: 'center',
+  },
+  storyIndicator: {
+    width: 10,
+    height: 2,
+    borderRadius: 1,
+    marginHorizontal: 2,
   },
 });
 

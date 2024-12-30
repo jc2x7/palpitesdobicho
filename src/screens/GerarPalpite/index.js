@@ -1,22 +1,3 @@
-/*
-
-
-const navigateToScreen = () => {
-    if (isConnected && loaded) {
-      try {
-        interstitial.show();
-      } catch (error) {
-        navigation.navigate("Orações"); // Navegação alternativa se o anúncio não puder ser exibido
-      }
-    } else {
-      navigation.navigate("Orações");
-    }
-  };
-
-
-
-  */
-
 // src/screens/GerarPalpite/index.js
 import React, { useState, useEffect } from "react";
 import {
@@ -31,42 +12,6 @@ import {
   SafeAreaView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-  InterstitialAd,
-  AdEventType,
-} from "react-native-google-mobile-ads";
-import NetInfo from "@react-native-community/netinfo";
-
-const androidAdUnitId_banner = "ca-app-pub-0562149345323036/2113244946";
-const iosAdUnitId_banner = "ca-app-pub-0562149345323036/8222628770";
-
-const androidAdUnitId_i = "ca-app-pub-0562149345323036/8109147622";
-const iosAdUnitId_i = "ca-app-pub-0562149345323036/4379153155";
-
-const adUnitId = __DEV__
-  ? TestIds.ADAPTIVE_BANNER
-  : Platform.OS === "ios"
-  ? iosAdUnitId_banner
-  : androidAdUnitId_banner;
-
-const adUnitId_i = __DEV__
-  ? TestIds.INTERSTITIAL
-  : Platform.OS === "ios"
-  ? iosAdUnitId_i
-  : androidAdUnitId_i;
-
-const interstitial = InterstitialAd.createForAdRequest(adUnitId_i, {
-  keywords: [
-    "LuckyNumbers",
-    "AnimalFortune",
-    "BettingFun ",
-    "WinBigPrizes ",
-    "DailyPredictions ",
-  ],
-});
 
 function GerarPalpite() {
   const [palpite, setPalpite] = useState({
@@ -75,67 +20,31 @@ function GerarPalpite() {
     milhar: "",
     animal: "",
     frase: "",
+    legenda: "", // Nova propriedade adicionada
     imagem: "",
   });
   const [palpiteGerado, setPalpiteGerado] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loaded, setLoaded] = useState(true);
-  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     verificarPalpiteDoDia();
   }, []);
 
-  useEffect(() => {
-    let adTimeout;
-
-    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isConnected);
-      if (!state.isConnected) {
-        setIsLoading(false); // Se não estiver conectado, encerra o loading
-      }
-    });
-
-    const adLoadedListener = interstitial.addAdEventListener(
-      AdEventType.LOADED,
-      () => {
-        setLoaded(true);
-        setIsLoading(false); // Encerra o loading quando o anúncio estiver carregado
-      }
-    );
-
-    const adClosedListener = interstitial.addAdEventListener(
-      AdEventType.CLOSED,
-      () => {
-        gerarPalpite();
-      }
-    );
-
-    interstitial.load();
-
-    // Define um tempo limite para o carregamento do anúncio
-    adTimeout = setTimeout(() => {
-      if (!loaded) {
-        setIsLoading(false); // Encerra o loading se o anúncio não carregar em tempo hábil
-      }
-    }, 10000); // 10 segundos para o tempo limite
-
-    return () => {
-      clearTimeout(adTimeout);
-      unsubscribeNetInfo();
-      adLoadedListener();
-      adClosedListener();
-    };
-  }, []);
-
   const verificarPalpiteDoDia = async () => {
     try {
-      const dataAtual = new Date().toLocaleDateString();
+      const dataAtual = new Date().toLocaleDateString("pt-BR");
+      const anoAtual = new Date().getFullYear();
       const palpiteSalvo = await AsyncStorage.getItem("palpiteDoDia_teste3");
+      const usedPhrasesKey = `usedPhrases_${anoAtual}`;
+      const usedPhrasesSalvo = await AsyncStorage.getItem(usedPhrasesKey);
+      const usedPhrases = usedPhrasesSalvo ? JSON.parse(usedPhrasesSalvo) : [];
+
       if (palpiteSalvo) {
-        const { data, palpite } = JSON.parse(palpiteSalvo);
+        const { data, palpite: palpiteData } = JSON.parse(palpiteSalvo);
         if (data === dataAtual) {
-          setPalpite(palpite);
+          const imagem = palpiteData.imagem;
+          const frase = palpiteData.frase;
+          const legenda = palpiteData.legenda; // Recupera legenda
+          setPalpite({ ...palpiteData, imagem, frase, legenda });
           setPalpiteGerado(true);
           return;
         }
@@ -148,21 +57,76 @@ function GerarPalpite() {
 
   const salvarPalpite = async (novoPalpite) => {
     try {
-      const dataAtual = new Date().toLocaleDateString();
+      const dataAtual = new Date().toLocaleDateString("pt-BR");
+      const anoAtual = new Date().getFullYear();
+      const usedPhrasesKey = `usedPhrases_${anoAtual}`;
+      const usedPhrasesSalvo = await AsyncStorage.getItem(usedPhrasesKey);
+      let usedPhrases = usedPhrasesSalvo ? JSON.parse(usedPhrasesSalvo) : [];
+
+      // Verifica se todas as frases já foram usadas
+      if (usedPhrases.length >= frases.length) {
+        // Reseta as frases usadas para o novo ano
+        usedPhrases = [];
+      }
+
+      // Encontra as frases disponíveis
+      const availableIndices = frases
+        .map((_, index) => index)
+        .filter((index) => !usedPhrases.includes(index));
+
+      if (availableIndices.length === 0) {
+        // Todas as frases foram usadas, reseta
+        usedPhrases = [];
+      }
+
+      // Seleciona uma frase aleatória disponível
+      const randomIndex =
+        availableIndices[Math.floor(Math.random() * availableIndices.length)];
+      const fraseSelecionada = frases[randomIndex]
+        .replace("${animal}", novoPalpite.animal)
+        .replace("${data}", dataAtual);
+
+      // Marca a frase como usada
+      usedPhrases.push(randomIndex);
+      await AsyncStorage.setItem(usedPhrasesKey, JSON.stringify(usedPhrases));
+
+      // Prepare a legenda (pode personalizar conforme necessário)
+      const legendaSelecionada = `Sua sorte está guiada pelo ${novoPalpite.animal}!`; // Exemplo de legenda
+
+      // Prepara os dados do palpite
       const palpiteDoDia = JSON.stringify({
         data: dataAtual,
-        palpite: novoPalpite,
+        palpite: {
+          dezena: novoPalpite.dezena,
+          centena: novoPalpite.centena,
+          milhar: novoPalpite.milhar,
+          animal: novoPalpite.animal,
+          frase: fraseSelecionada,
+          legenda: legendaSelecionada, // Inclui legenda
+          imagem: novoPalpite.imagem,   // Inclui caminho da imagem
+        },
       });
       await AsyncStorage.setItem("palpiteDoDia_teste3", palpiteDoDia);
-      setPalpite(novoPalpite);
+      setPalpite({ ...novoPalpite, frase: fraseSelecionada, legenda: legendaSelecionada });
       setPalpiteGerado(true);
+
+      // Atualizar o histórico
       const historicoSalvo = await AsyncStorage.getItem(
         "historicoPalpites_teste3"
       );
       const historico = historicoSalvo ? JSON.parse(historicoSalvo) : [];
-      historico.unshift({ data: dataAtual, ...novoPalpite }); // Adiciona ao início da lista
-      if (historico.length > 14) {
-        historico.pop(); // Mantém apenas os últimos 14 palpites
+      historico.unshift({
+        data: dataAtual,
+        dezena: novoPalpite.dezena,
+        centena: novoPalpite.centena,
+        milhar: novoPalpite.milhar,
+        animal: novoPalpite.animal,
+        frase: fraseSelecionada,
+        legenda: legendaSelecionada, // Inclui legenda no histórico
+        imagem: novoPalpite.imagem,   // Inclui imagem no histórico
+      });
+      if (historico.length > 365) {
+        historico.pop();
       }
       await AsyncStorage.setItem(
         "historicoPalpites_teste3",
@@ -173,27 +137,6 @@ function GerarPalpite() {
     }
   };
 
-  /*
-const salvarPalpite = async (novoPalpite) => {
-  try {
-    const dataAtual = new Date().toLocaleDateString();
-    const palpiteDoDia = JSON.stringify({ data: dataAtual, ...novoPalpite });
-    await AsyncStorage.setItem('palpiteDoDia', palpiteDoDia);
-
-    // Atualizar o histórico
-    const historicoSalvo = await AsyncStorage.getItem('historicoPalpites');
-    const historico = historicoSalvo ? JSON.parse(historicoSalvo) : [];
-    historico.unshift({ data: dataAtual, ...novoPalpite }); // Adiciona ao início da lista
-    if (historico.length > 14) {
-      historico.pop(); // Mantém apenas os últimos 14 palpites
-    }
-    await AsyncStorage.setItem('historicoPalpites', JSON.stringify(historico));
-  } catch (error) {
-    console.error('Erro ao salvar o palpite', error);
-  }
-};
-  */
-
   const compartilharNoWhatsApp = async () => {
     try {
       const mensagem =
@@ -202,16 +145,16 @@ const salvarPalpite = async (novoPalpite) => {
         `*Dezena:* ${palpite.dezena}\n` +
         `*Centena:* ${palpite.centena}\n` +
         `*Milhar:* ${palpite.milhar}\n` +
-        `*Frase:* ${palpite.frase}\n\n` +
+        `*Frase:* ${palpite.frase}\n` +
+        `*Legenda:* ${palpite.legenda}\n\n` + // Inclui legenda na mensagem
         `*Baixe para Android*: https://play.google.com/store/apps/details?id=juliolemos.jogodobicho&pli=1\n\n` +
         `*Baixe para iOS*: https://apps.apple.com/app/id1635698709`;
 
       await Share.share({
         message: mensagem,
-        // Para iOS, a URL é inclusa na mensagem
         url:
           Platform.OS === "android"
-            ? "whatsapp://send?text=" + mensagem
+            ? "whatsapp://send?text=" + encodeURIComponent(mensagem)
             : undefined,
       });
     } catch (error) {
@@ -259,8 +202,8 @@ const salvarPalpite = async (novoPalpite) => {
   const imagensAnimais = {
     Avestruz: require("../../images/animais/Avestruz.png"),
     Aguia: require("../../images/animais/Aguia.png"),
-    Burro: require("../../images/animais/Burro.png"),
     Borboleta: require("../../images/animais/Borboleta.png"),
+    Burro: require("../../images/animais/Burro.png"),
     Cachorro: require("../../images/animais/Cachorro.png"),
     Cabra: require("../../images/animais/Cabra.png"),
     Carneiro: require("../../images/animais/Carneiro.png"),
@@ -282,18 +225,29 @@ const salvarPalpite = async (novoPalpite) => {
     Urso: require("../../images/animais/Urso.png"),
     Veado: require("../../images/animais/Veado.png"),
     Vaca: require("../../images/animais/Vaca.png"),
-    // Adicione todas as outras imagens aqui...
+  };
+
+  // Removi a definição de 'const frases = [ ... ]' conforme solicitado.
+  // Certifique-se de definir seu próprio array de frases em outro lugar no código.
+
+  const gerarFrase = (data, animal) => {
+    // Seleciona uma frase aleatória que ainda não foi usada
+    const index = gerarNumeroAleatorio(0, frases.length - 1);
+    const fraseSelecionada = frases[index]
+      .replace("${animal}", animal)
+      .replace("${data}", data);
+    return fraseSelecionada;
   };
 
   const gerarPalpite = () => {
-    const numeroBase = gerarNumeroAleatorio(1, 100) % 100; // Garante que o número seja entre 0 e 99
-    const centena = gerarNumeroAleatorio(1, 9) * 100 + numeroBase;
-    const milhar = gerarNumeroAleatorio(1, 9) * 1000 + numeroBase;
+    const numeroBase = gerarNumeroAleatorio(1, 100);
+    const centena = gerarNumeroAleatorio(1, 9) * 100 + (numeroBase % 100);
+    const milhar = gerarNumeroAleatorio(1, 9) * 1000 + (numeroBase % 1000);
     const animal = getAnimalByNumber(numeroBase === 0 ? 100 : numeroBase);
     const imagem = imagensAnimais[animal];
-    const frase = getFraseAleatoria(animal); // Use o novo valor de 'animal' aqui
-
-    setPalpite({ dezena: numeroBase, centena, milhar, animal, imagem, frase });
+    const dataAtual = new Date().toLocaleDateString("pt-BR");
+    const frase = gerarFrase(dataAtual, animal);
+    const legenda = `Sua sorte está guiada pelo ${animal}!`; // Exemplo de legenda personalizada
     const novoPalpite = {
       dezena: numeroBase,
       centena,
@@ -301,365 +255,140 @@ const salvarPalpite = async (novoPalpite) => {
       animal,
       imagem,
       frase,
+      legenda, // Nova propriedade adicionada
     };
+    setPalpite(novoPalpite);
     salvarPalpite(novoPalpite);
   };
 
-  const navigateToScreen = () => {
-    if (isConnected && loaded) {
-      try {
-        interstitial.show();
-      } catch (error) {
-        gerarPalpite; // Navegação alternativa se o anúncio não puder ser exibido
-      }
-    } else {
-      gerarPalpite;
-    }
-  };
-  //frases
-  const frases = [
-    "Hoje, {data}, o {animal} trará boas novidades.",
-    "Fique atento(a) aos sinais, pois o {animal} de {data} tem uma surpresa.",
-    "Neste dia {data}, o {animal} pode ser um sinal de sorte.",
-    "Considere as oportunidades que o {animal} de {data} traz.",
-    "{animal} de hoje, {data}, sugere um dia de reflexão.",
-    "Preste atenção nos detalhes, o {animal} de {data} indica mudanças.",
-    "{animal} deste dia {data} simboliza crescimento e progresso.",
-    "Que o {animal} de {data} inspire criatividade e inovação.",
-    "Um dia de {data} sob a influência do {animal} promete ser interessante.",
-    "{animal} de {data} traz uma mensagem de otimismo e esperança.",
-    "Em {data}, o {animal} sinaliza um momento de força e determinação.",
-    "A sabedoria do {animal} em {data} te guiará para o sucesso.",
-    "Este {data} será especial, graças à energia do {animal}.",
-    "Hoje, {data}, o {animal} representa novos começos e oportunidades.",
-    "Confie na intuição: o {animal} de {data} traz insights poderosos.",
-    "{animal} de hoje, {data}, encoraja você a perseguir seus sonhos.",
-    "Este {data} é sobre aprender e crescer, inspirado pelo {animal}.",
-    "{animal} deste {data} te incentiva a abraçar mudanças.",
-    "Em {data}, o {animal} lembra a importância da paciência e do tempo.",
-    "A energia do {animal} neste {data} fomenta a criatividade e a inovação.",
-    "No dia {data}, o {animal} simboliza a superação de desafios.",
-    "Aproveite as oportunidades deste {data} sob a influência do {animal}.",
-    "{animal} deste {data} te motiva a agir com coragem e confiança.",
-    "Hoje, {data}, o {animal} ilumina o caminho para o autodescobrimento.",
-    "{animal} de {data} traz uma onda de energia positiva e alegria.",
-    "Em {data}, o {animal} incentiva a busca pelo equilíbrio e harmonia.",
-    "Este {data} é um convite para a aventura, cortesia do {animal}.",
-    "{animal} de hoje, {data}, destaca a importância de conexões e amizades.",
-    "Neste {data}, o {animal} simboliza renovação e esperança.",
-    "{animal} deste {data} te encoraja a viver com mais liberdade e alegria.",
-    "{animal} de {data} traz uma onda de otimismo e possibilidades",
-    "Em {data}, deixe o {animal} ser seu guia para novas aventuras",
-    "Hoje, {data}, o {animal} simboliza uma jornada de autodescoberta e crescimento",
-    "A energia do {animal} em {data} sugere um dia de sucesso e realizações",
-    "Deixe o {animal} de {data} inspirar confiança e coragem em suas decisões",
-    "Neste {data}, o {animal} representa a superação de obstáculos e desafios",
-    "{animal} deste {data} encoraja a perseverança e a determinação",
-    "Hoje, {data}, é dia de celebrar a resiliência, simbolizada pelo {animal}",
-    "{animal} de {data} traz uma mensagem de esperança e renovação",
-    "Em {data}, o {animal} te convida a explorar novos horizontes",
-    "Este {data} é perfeito para planejar e sonhar, guiado pela sabedoria do {animal}",
-    "Deixe que o {animal} de {data} te inspire a encontrar alegria nas pequenas coisas",
-    "{animal} de {data} sinaliza um momento ideal para fortalecer laços e amizades",
-    "Neste {data}, o {animal} lembra a importância de ser verdadeiro consigo mesmo",
-    "Hoje, {data}, o {animal} te incentiva a abraçar novos desafios com entusiasmo",
-    "{animal} deste {data} simboliza a beleza da transformação e mudança",
-    "Em {data}, o {animal} traz clareza e foco para seus objetivos",
-    "A presença do {animal} em {data} indica um dia de harmonia e equilíbrio",
-    "{animal} de {data} é um sinal de força interior e resiliência",
-    "Hoje, {data}, deixe o {animal} ser um lembrete de gratidão e contentamento",
-    "{animal} de {data} traz uma onda de otimismo e possibilidades",
-    "Em {data}, deixe o {animal} ser seu guia para novas aventuras",
-    "Hoje, {data}, o {animal} simboliza uma jornada de autodescoberta e crescimento",
-    "A energia do {animal} em {data} sugere um dia de sucesso e realizações",
-    "Deixe o {animal} de {data} inspirar confiança e coragem em suas decisões",
-    "Neste {data}, o {animal} representa a superação de obstáculos e desafios",
-    "{animal} deste {data} encoraja a perseverança e a determinação",
-    "Hoje, {data}, é dia de celebrar a resiliência, simbolizada pelo {animal}",
-    "{animal} de {data} traz uma mensagem de esperança e renovação",
-    "Em {data}, o {animal} te convida a explorar novos horizontes",
-    "Este {data} é perfeito para planejar e sonhar, guiado pela sabedoria do {animal}",
-    "Deixe que o {animal} de {data} te inspire a encontrar alegria nas pequenas coisas",
-    "{animal} de {data} sinaliza um momento ideal para fortalecer laços e amizades",
-    "Neste {data}, o {animal} lembra a importância de ser verdadeiro consigo mesmo",
-    "Hoje, {data}, o {animal} te incentiva a abraçar novos desafios com entusiasmo",
-    "{animal} deste {data} simboliza a beleza da transformação e mudança",
-    "Em {data}, o {animal} traz clareza e foco para seus objetivos",
-    "A presença do {animal} em {data} indica um dia de harmonia e equilíbrio",
-    "{animal} de {data} é um sinal de força interior e resiliência",
-    "Hoje, {data}, deixe o {animal} ser um lembrete de gratidão e contentamento",
-    "{animal} de {data} anuncia um período de abundância e prosperidade",
-    "Em {data}, o {animal} inspira a busca por conhecimento e sabedoria",
-    "Hoje, {data}, o {animal} promove a união e a compreensão mútua",
-    "{animal} em {data} sugere um dia de introspecção e autoconhecimento",
-    "Deixe o {animal} de {data} ser um guia para a descoberta e a aventura",
-    "Neste {data}, o {animal} sinaliza um caminho de sucesso e realizações",
-    "{animal} deste {data} incentiva a viver com paixão e determinação",
-    "Hoje, {data}, é um dia para abraçar a mudança, guiado pelo {animal}",
-    "{animal} de {data} fala sobre a importância de cuidar de si mesmo",
-    "Em {data}, o {animal} encoraja a expressão criativa e a inovação",
-    "Este {data} destaca a força e a coragem, simbolizadas pelo {animal}",
-    "Deixe que o {animal} de {data} desperte a sua curiosidade e imaginação",
-    "{animal} de {data} é um convite para celebrar a vida e suas maravilhas",
-    "Neste {data}, o {animal} enfatiza a importância de manter a esperança viva",
-    "Hoje, {data}, o {animal} te lembra de abraçar a sua verdadeira essência",
-    "{animal} deste {data} promove o equilíbrio entre trabalho e lazer",
-    "Em {data}, o {animal} é um símbolo de persistência e resistência",
-    "A influência do {animal} em {data} traz clareza para suas decisões",
-    "Em {data}, o {animal} lembra você de valorizar as conexões humanas",
-    "Hoje, {data}, o {animal} destaca a importância de agir com integridade",
-    "{animal} de {data} inspira a buscar a paz interior e a serenidade",
-    "Neste {data}, o {animal} simboliza a força para enfrentar desafios",
-    "Hoje, {data}, o {animal} incentiva a buscar a verdade e a justiça",
-    "{animal} de {data} representa a necessidade de adaptabilidade e flexibilidade",
-    "Em {data}, o {animal} incentiva a celebração da vida e seus pequenos prazeres",
-    "{animal} de {data} traz uma mensagem de cautela e prudência",
-    "Neste {data}, o {animal} encoraja a tomar decisões ponderadas e equilibradas",
-    "Hoje, {data}, o {animal} sugere um momento para repensar e recalibrar",
-    "{animal} de {data} destaca a importância de cuidar do seu bem-estar",
-    "Em {data}, o {animal} simboliza a beleza da simplicidade e do minimalismo",
-    "{animal} de {data} encoraja a expressar sua individualidade e criatividade",
-    "Neste {data}, o {animal} lembra a importância de ser resiliente e persistente",
-    "Hoje, {data}, o {animal} é um símbolo de sorte e fortuna",
-    "{animal} de {data} incentiva a enfrentar medos e incertezas",
-    "Em {data}, o {animal} destaca a necessidade de ser proativo e assertivo",
-    "{animal} de {data} traz insights sobre paciência e tempo",
-    "Neste {data}, o {animal} incentiva a manter um espírito aventureiro",
-    "Hoje, {data}, o {animal} é um lembrete de que cada dia é uma nova oportunidade",
-    "Hoje, {data}, o {animal} simboliza um novo ciclo de energia e vitalidade.",
-    "Em {data}, o {animal} te lembra da beleza em cada pequeno momento.",
-    "{animal} deste {data} é um convite para abraçar a mudança com otimismo.",
-    "Neste {data}, o {animal} representa a força para realizar sonhos e desejos.",
-    "Hoje, {data}, o {animal} incentiva a construir laços fortes e significativos.",
-    "Em {data}, o {animal} traz uma mensagem de perseverança e esperança.",
-    "{animal} de {data} sugere um dia de conquistas e sucessos.",
-    "Neste {data}, o {animal} é um lembrete para apreciar as maravilhas da vida.",
-    "Hoje, {data}, o {animal} simboliza a importância da autenticidade e sinceridade.",
-    "{animal} deste {data} encoraja a explorar novos caminhos e ideias.",
-    "Em {data}, o {animal} te inspira a buscar a sabedoria e a compreensão.",
-    "Hoje, {data}, o {animal} representa a capacidade de superar dificuldades.",
-    "Neste {data}, o {animal} é um sinal de progresso e desenvolvimento.",
-    "{animal} de {data} incentiva a celebração de cada conquista, grande ou pequena.",
-    "Em {data}, o {animal} simboliza a importância da paciência e persistência.",
-    "Hoje, {data}, o {animal} destaca a necessidade de equilíbrio e moderação.",
-    "{animal} deste {data} é um lembrete da força que vem da calma e tranquilidade.",
-    "Neste {data}, o {animal} incentiva a apreciar a jornada, não apenas o destino.",
-    "Hoje, {data}, o {animal} te lembra de valorizar cada experiência de vida.",
-    "Em {data}, o {animal} é um convite para se conectar com a sua essência.",
-    "{animal} de {data} sugere um dia para renovar a energia e o foco.",
-    "Neste {data}, o {animal} representa a alegria de viver plenamente.",
-    "Hoje, {data}, o {animal} encoraja a encontrar a beleza em tudo ao seu redor.",
-    "Em {data}, o {animal} simboliza a união e o poder da comunidade.",
-    "{animal} deste {data} traz a promessa de crescimento e aprendizado.",
-    "Neste {data}, o {animal} é um símbolo de gratidão e apreciação.",
-    "Hoje, {data}, o {animal} te lembra da importância de seguir seu coração.",
-    "Em {data}, o {animal} incentiva a expressão de suas ideias e pensamentos.",
-    "{animal} de {data} é um lembrete para tomar ações com confiança e determinação.",
-    "Neste {data}, o {animal} sugere um momento ideal para reflexão e introspecção.",
-    "Hoje, {data}, o {animal} representa a liberdade de escolher seu próprio caminho.",
-    "Em {data}, o {animal} te inspira a abraçar novas possibilidades e aventuras.",
-    "{animal} deste {data} destaca a importância da resiliência e adaptabilidade.",
-    "Neste {data}, o {animal} é um lembrete para celebrar a diversidade e a unicidade.",
-    "Hoje, {data}, o {animal} simboliza a força para enfrentar qualquer desafio.",
-    "Em {data}, o {animal} traz uma mensagem de conforto e segurança.",
-    "{animal} de {data} incentiva a manter um espírito de curiosidade e exploração.",
-    "Neste {data}, o {animal} é um sinal de renovação e novos começos.",
-    "Hoje, {data}, o {animal} te lembra de perseguir seus objetivos com paixão.",
-    "Em {data}, o {animal} simboliza a importância de manter a fé e a esperança.",
-    "{animal} deste {data} destaca a necessidade de estar presente e consciente.",
-    "Neste {data}, o {animal} encoraja a expressar amor e gratidão.",
-    "Hoje, {data}, o {animal} representa a capacidade de transformar desafios em oportunidades.",
-    "Em {data}, o {animal} é um lembrete da beleza em ser generoso e altruísta.",
-    "{animal} de {data} incentiva a reconhecer e valorizar suas próprias conquistas.",
-    "Neste {data}, o {animal} simboliza a jornada em direção à autoconsciência.",
-    "Hoje, {data}, o {animal} te lembra de abraçar a sua jornada única.",
-    "Em {data}, o {animal} é um convite para viver com propósito e intenção.",
-    "{animal} deste {data} destaca a importância de seguir sua intuição.",
-    "Neste {data}, o {animal} simboliza a alegria de compartilhar momentos e experiências.",
-    "No dia {data}, deixe o {animal} ser um sinal de alegria e celebração.",
-    "Hoje, {data}, o {animal} traz a promessa de descobertas emocionantes.",
-    "A presença do {animal} neste {data} indica uma jornada de crescimento pessoal.",
-    "Em {data}, o {animal} ressalta a importância da coragem e da audácia.",
-    "{animal} de {data} é um convite para abraçar novos começos.",
-    "Este {data} é um momento perfeito para reflexão, inspirado pelo {animal}.",
-    "Hoje, {data}, o {animal} simboliza a harmonia e a paz interior.",
-    "Em {data}, o {animal} encoraja a busca por felicidade e satisfação.",
-    "{animal} deste {data} te incentiva a encontrar beleza no cotidiano.",
-    "Neste {data}, o {animal} lembra a você a importância da perseverança.",
-    "Hoje, {data}, o {animal} destaca a necessidade de ser verdadeiro e autêntico.",
-    "Em {data}, o {animal} é um símbolo de esperança e renovação.",
-    "{animal} de {data} traz uma energia de vitalidade e entusiasmo.",
-    "Neste {data}, o {animal} representa a capacidade de superar obstáculos.",
-    "Hoje, {data}, o {animal} te encoraja a valorizar momentos de quietude e calma.",
-    "{animal} deste {data} lembra a você de celebrar suas conquistas e vitórias.",
-    "Em {data}, o {animal} sugere um tempo para fortalecer laços familiares e amizades.",
-    "{animal} de {data} é um lembrete da importância de cuidar da saúde mental e física.",
-    "Neste {data}, o {animal} simboliza a transformação e o crescimento pessoal.",
-    "Hoje, {data}, o {animal} incentiva a explorar novos territórios e ideias.",
-    "Em {data}, o {animal} representa a força para encarar novos desafios.",
-    "{animal} deste {data} é um símbolo de sabedoria e discernimento.",
-    "Hoje, {data}, o {animal} te lembra de buscar equilíbrio e moderação.",
-    "Neste {data}, o {animal} traz uma mensagem de confiança e autoestima.",
-    "{animal} de {data} incentiva a celebração da sua individualidade única.",
-    "Em {data}, o {animal} simboliza uma chance para renovação e mudança.",
-    "Hoje, {data}, o {animal} é um convite para praticar gratidão e apreciação.",
-    "{animal} deste {data} destaca a importância de se conectar com a natureza.",
-    "Neste {data}, o {animal} incentiva a viver cada momento com paixão.",
-    "Em {data}, o {animal} lembra você de buscar sabedoria nas experiências.",
-    "Hoje, {data}, o {animal} simboliza a unidade e a colaboração.",
-    "{animal} de {data} incentiva a busca por crescimento espiritual e iluminação.",
-    "Neste {data}, o {animal} é um lembrete da beleza da simplicidade.",
-    "Em {data}, o {animal} te convida a reconhecer e celebrar suas habilidades.",
-    "Hoje, {data}, o {animal} representa a importância de se adaptar a mudanças.",
-    "{animal} deste {data} simboliza a liberdade e a independência.",
-    "Neste {data}, o {animal} encoraja a enfrentar seus medos com bravura.",
-    "Hoje, {data}, o {animal} destaca a importância da empatia e compreensão.",
-    "Em {data}, o {animal} é um lembrete para valorizar a vida em todas as suas formas.",
-    "{animal} de {data} incentiva a manter uma mente aberta e curiosa.",
-    "Neste {data}, o {animal} simboliza a capacidade de encontrar soluções criativas.",
-    "Hoje, {data}, o {animal} representa a jornada em busca da verdade.",
-    "Em {data}, o {animal} te encoraja a fortalecer a sua voz interior.",
-    "{animal} deste {data} é um convite para expressar sua arte e criatividade.",
-    "Neste {data}, o {animal} lembra a importância da flexibilidade e adaptação.",
-    "Hoje, {data}, o {animal} é um símbolo de ação e iniciativa.",
-    "Em {data}, o {animal} sugere um tempo para introspecção e meditação.",
-    "{animal} de {data} te incentiva a buscar harmonia e paz.",
-    "Neste {data}, o {animal} representa a importância da gentileza e compaixão.",
-    "Hoje, {data}, o {animal} destaca a necessidade de celebração e alegria.",
-  ];
-
-  const getFraseAleatoria = (animal) => {
-    const index = Math.floor(Math.random() * frases.length);
-    const data = new Date().toLocaleDateString();
-    return frases[index].replace("{animal}", animal).replace("{data}", data);
-  };
-
   return (
-  <SafeAreaView>
-    <ScrollView>
-    <View style={styles.container}>
-      
-      {palpite.imagem && (
-        <Image source={palpite.imagem} style={styles.imagemAnimal} />
-      )}
-
-      {palpite.animal && (
-        <View style={styles.card}>
-          <Text style={styles.animalText}>{palpite.animal}</Text>
-          <Text style={styles.resultText}>Dezena: {palpite.dezena}</Text>
-          <Text style={styles.resultText}>Centena: {palpite.centena}</Text>
-          <Text style={styles.resultText}>Milhar: {palpite.milhar}</Text>
-          <Text style={styles.fraseText}>{palpite.frase}</Text>
+    <SafeAreaView style={styles.safeContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+          {palpite.imagem && (
+            <Image source={palpite.imagem} style={styles.imagemAnimal} />
+          )}
+          {palpite.animal && (
+            <View style={styles.card}>
+              <Text style={styles.animalText}>{palpite.animal}</Text>
+              <Text style={styles.resultText}>Dezena: {palpite.dezena}</Text>
+              <Text style={styles.resultText}>Centena: {palpite.centena}</Text>
+              <Text style={styles.resultText}>Milhar: {palpite.milhar}</Text>
+            </View>
+          )}
+          {palpite.frase !== "" && (
+            <Text style={styles.fraseText}>{palpite.frase}</Text>
+          )}
+          {palpite.legenda !== "" && (
+            <Text style={styles.legendaText}>{palpite.legenda}</Text>
+          )}
+          {palpiteGerado ? (
+            <View style={styles.center}>
+              <Text style={styles.infoText}>
+                Você já tem um palpite para hoje. Aguarde até amanhã para gerar
+                um novo palpite e boa sorte no jogo!
+              </Text>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={compartilharNoWhatsApp}
+              >
+                <Text style={styles.shareButtonText}>
+                  Compartilhar no WhatsApp
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
+              <Text style={styles.buttonText}>Gerar Palpite</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      )}
-
-      {palpiteGerado ? (
-        <View>
-          <Text style={styles.fraseText}>
-            Você já tem um palpite para hoje. Aguarde até amanhã para gerar um
-            novo palpite e boa sorte no jogo!
-          </Text>
-          <TouchableOpacity
-            style={styles.shareButton}
-            onPress={compartilharNoWhatsApp}
-          >
-            <Text style={styles.shareButtonText}>Compartilhar no WhatsApp</Text>
-          </TouchableOpacity>
-        </View>
-            
-            
-          
-      ) : (
-        <View>
-          <TouchableOpacity style={styles.button} onPress={navigateToScreen}>
-            <Text style={styles.buttonText}>Gerar Palpite</Text>
-          </TouchableOpacity>
-          <View style={{ marginBottom: 10 }}></View>
-          <BannerAd
-            unitId={adUnitId}
-            size={BannerAdSize.MEDIUM_RECTANGLE}
-            requestOptions={{
-              networkExtras: {
-                collapsible: "bottom",
-              },
-            }}
-          />
-        </View>
-      )}
-    </View>
-    </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  container: {
     alignItems: "center",
     justifyContent: "center",
+    width: "100%",
+    padding: 20,
   },
   button: {
     backgroundColor: "#4caf50",
     padding: 15,
     borderRadius: 10,
+    marginTop: 20,
+    width: "80%",
+    alignItems: "center",
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
-  resultContainer: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  resultText: {
-    fontSize: 18,
-    color: "#333",
-    marginVertical: 5,
-  },
   imagemAnimal: {
     width: 250,
     height: 250,
-    borderRadius: 125, // Faz a imagem ficar arredondada
+    borderRadius: 125,
     marginTop: 20,
-    borderWidth: 2, // Adiciona uma borda de 2px
-    borderColor: "green", // Define a cor da borda como verde
+    borderWidth: 2,
+    borderColor: "green",
   },
   card: {
-    backgroundColor: "#fff", // Fundo branco para o card
+    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 20,
-    shadowColor: "#000", // Sombra para dar efeito elevado
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 5, // Efeito de elevação para Android
+    elevation: 5,
     alignItems: "center",
     marginVertical: 20,
-    width: "70%",
-    borderWidth: 2, // Adiciona uma borda de 2px
-    borderColor: "green", // Define a cor da borda como verde
+    width: "80%",
   },
   animalText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#4caf50", // Cor destacada para o nome do animal
+    color: "#4caf50",
     marginBottom: 15,
+  },
+  resultText: {
+    fontSize: 16,
+    marginBottom: 5,
   },
   fraseText: {
     fontSize: 16,
-    fontStyle: "italic",
-    color: "#666",
+    color: "#4caf50",
     textAlign: "center",
     paddingHorizontal: 20,
-    marginTop: 20,
+    marginTop: 10,
+  },
+  legendaText: {
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   shareButton: {
-    backgroundColor: "#25D366", // Cor do WhatsApp
+    backgroundColor: "#25D366",
     padding: 15,
     borderRadius: 10,
     marginTop: 10,
-    marginBottom:15
+    alignItems: "center",
+    width: "80%",
   },
   shareButtonText: {
     color: "#fff",
@@ -667,6 +396,412 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  center: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  infoText: {
+    fontSize: 16,
+    fontStyle: "italic",
+    color: "#666",
+    textAlign: "center",
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
 });
+
+
+// Adicione as 365 frases abaixo. Por motivos de espaço, apresento aqui 100 frases. Você deve continuar o padrão para completar as 365 frases.
+
+const frases = [
+  "Hoje, ${animal} é a melhor opção para trazer sorte e prosperidade para suas atividades diárias. Aproveite as energias positivas que este dia reserva para você.",
+  "No dia ${data}, o ${animal} ilumina seu caminho com boas energias, guiando-o para decisões acertadas e oportunidades incríveis.",
+  "Com o ${animal} ao seu lado em ${data}, a sorte está garantida em todas as suas empreitadas. Este é o momento ideal para avançar em seus projetos.",
+  "Em ${data}, o ${animal} traz oportunidades únicas para você, permitindo que você alcance novos patamares de sucesso e realização pessoal.",
+  "Hoje, ${data}, o ${animal} simboliza força e sucesso para suas ações, capacitando você a superar qualquer desafio que surja em seu caminho.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas, onde seus esforços serão recompensados com resultados extraordinários.",
+  "Em ${data}, o ${animal} guia você rumo à sorte e realizações, proporcionando um dia cheio de vitórias e progressos significativos.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes metas, oferecendo o suporte necessário para que você alcance seus objetivos com facilidade.",
+  "Com o ${animal} em ${data}, sua sorte está em alta, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e harmonia para o seu dia, ajudando você a manter a calma e a clareza em todas as situações.",
+  "Hoje, ${data}, o ${animal} simboliza determinação e sucesso, incentivando você a persistir em seus esforços e a colher os frutos de seu trabalho duro.",
+  "A presença do ${animal} em ${data} garante um dia próspero, onde suas ações serão recompensadas com abundância e realizações satisfatórias.",
+  "Em ${data}, o ${animal} ilumina suas decisões com boa sorte, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias, abrindo caminhos que levarão você a conquistas que antes pareciam inalcançáveis.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+  "Em ${data}, o ${animal} traz sorte e energia para suas ações, impulsionando você a agir com confiança e a alcançar seus objetivos com facilidade.",
+  "Hoje, ${data}, o ${animal} simboliza força e determinação para o sucesso, capacitando você a superar qualquer desafio que possa surgir.",
+  "A presença do ${animal} em ${data} assegura um dia de conquistas e sorte, onde seus esforços serão recompensados com resultados excepcionais.",
+  "Em ${data}, o ${animal} guia você para caminhos de prosperidade, oferecendo oportunidades que levarão você a novos patamares de sucesso.",
+  "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes objetivos, proporcionando a sorte necessária para que você realize seus sonhos.",
+  "Com o ${animal} em ${data}, sua sorte estará sempre ao seu favor, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+  "Em ${data}, o ${animal} traz equilíbrio e sucesso para o seu dia, ajudando você a manter a harmonia entre suas atividades e objetivos.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e boas oportunidades, incentivando você a persistir em seus esforços e a aproveitar cada chance que surgir.",
+  "A presença do ${animal} em ${data} garante um dia próspero e sortudo, onde suas ações serão recompensadas com abundância e realizações significativas.",
+  "Em ${data}, o ${animal} ilumina suas decisões com sorte e sucesso, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+  "Hoje, ${data}, o ${animal} é a chave para suas vitórias e conquistas, abrindo caminhos que levarão você a alcançar tudo o que deseja.",
+  "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+  "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+  "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+  "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+  "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+  "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+  "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+  "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+  "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+  "A presença do ${animal} em ${data} garante um dia de avanços significativos, onde cada passo dado o aproxima mais de seus objetivos.",
+  "Em ${data}, o ${animal} ilumina seu caminho com sorte e prosperidade, proporcionando um ambiente favorável para o crescimento e a realização.",
+  "Hoje, ${data}, o ${animal} é a melhor escolha para um dia bem-sucedido, guiando você para decisões que trarão resultados positivos.",
+  "Com o ${animal} em ${data}, você terá um dia cheio de realizações, onde cada ação sua contribuirá para o seu sucesso pessoal e profissional.",
+];
 
 export default GerarPalpite;

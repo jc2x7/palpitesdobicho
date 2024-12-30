@@ -1,42 +1,39 @@
 {
-  "expo": {
-    "name": "PalpitesDoBicho",
-    "slug": "PalpitesDoBicho",
-    "version": "12.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
+  "name": "PalpitesDoBicho",
+  "slug": "PalpitesDoBicho",
+  "version": "13.0.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "userInterfaceStyle": "light",
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "assetBundlePatterns": [
+    "**/*"
+  ],
+  "ios": {
+    "supportsTablet": true,
+    "bundleIdentifier": "com.juliolemosdf.palpitesdobicho"
+  },
+  "android": {
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.juliolemosdf.palpitesdobicho"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "versionCode": 25
-      },
-      "package": "juliolemos.jogodobicho"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "a4ccb149-f20f-4d6e-89f2-3f5cbc682f29"
-      }
+    "package": "juliolemos.jogodobicho",
+    "versionCode": 26
+  },
+  "web": {
+    "favicon": "./assets/favicon.png"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "a4ccb149-f20f-4d6e-89f2-3f5cbc682f29"
     }
   },
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-0562149345323036~2064801742",
-    "ios_app_id": "ca-app-pub-0562149345323036~3681582686"
-  }
+  "plugins": [
+    "expo-build-properties"
+  ]
 }
