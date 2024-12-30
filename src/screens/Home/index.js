@@ -1,7 +1,8 @@
 // src/screens/Home/index.js
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, Linking } from 'react-native';
 import logo from '../../images/logo.png'; // Importação da logo
+import banner from '../../images/banner_2.png'; // Importação do banner
 
 function Home({ navigation }) {
   return (
@@ -22,6 +23,10 @@ function Home({ navigation }) {
             style={styles.button}
             onPress={() => navigation.navigate('Resultados')}>
             <Text style={styles.buttonText}>Resultados</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+            <Image source={banner} style={styles.banner} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -81,6 +86,12 @@ const styles = StyleSheet.create({
     height: 250, // Defina o tamanho conforme necessário
     marginBottom: 20,
     borderRadius: 20, // Arredonda as bordas da imagem
+  },
+  banner: {
+    width: 400,
+    height: 200, // Ajuste a altura conforme necessário
+    marginVertical: 20,
+    resizeMode: 'contain',
   },
 });
 

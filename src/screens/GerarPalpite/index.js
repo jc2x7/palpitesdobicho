@@ -10,8 +10,12 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
+  Linking
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import banner from '../../images/banner_2.png'; // Importação do banner
+import banner2 from '../../images/banner_1.png'; // Importação do banner
+
 
 function GerarPalpite() {
   const [palpite, setPalpite] = useState({
@@ -264,6 +268,9 @@ function GerarPalpite() {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+      <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+            <Image source={banner2} style={styles.banner2} />
+          </TouchableOpacity>
         <View style={styles.container}>
           {palpite.imagem && (
             <Image source={palpite.imagem} style={styles.imagemAnimal} />
@@ -298,9 +305,15 @@ function GerarPalpite() {
               </TouchableOpacity>
             </View>
           ) : (
+            <View style={styles.center}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+            <Image source={banner} style={styles.banner} />
+          </TouchableOpacity>
+
             <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
               <Text style={styles.buttonText}>Gerar Palpite</Text>
             </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -409,6 +422,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 20,
   },
+  banner: {
+    width: 400,
+    height: 200, // Ajuste a altura conforme necessário
+    marginVertical: 20,
+    resizeMode: 'contain',
+  },
+  banner2: {
+    width: 380, // Ocupa toda a largura disponível
+    height: 80,
+    marginTop: 20,
+    resizeMode: 'contain',
+
+  },
+  
 });
 
 
