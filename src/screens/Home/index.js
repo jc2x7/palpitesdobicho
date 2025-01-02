@@ -1,10 +1,78 @@
 // src/screens/Home/index.js
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, Linking } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  SafeAreaView, 
+  ScrollView, 
+  Linking, 
+  Platform 
+} from 'react-native';
 import logo from '../../images/logo.png'; // Importação da logo
-import banner from '../../images/banner_2.png'; // Importação do banner
+import bannerImage from '../../images/banner_2.png'; // Importação do banner
+import { 
+  InterstitialAd, 
+  AdEventType, 
+  TestIds 
+} from 'react-native-google-mobile-ads';
+
+const interstitialAdUnitId = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.OS === 'ios'
+  ? 'ca-app-pub-0562149345323036/3395876993'
+  : 'ca-app-pub-0562149345323036/9542002948';
+
+const adKeywords = [
+  'Aposta', 'Jogos', 'Loteria', 'Bingo', 'Futebol',
+  'Bet', 'Flamengo', 'Amazon', 'Shoppe', 'Aliexpress'
+];
 
 function Home({ navigation }) {
+  const [interstitialLoaded, setInterstitialLoaded] = useState(false);
+  const interstitial = InterstitialAd.createForAdRequest(interstitialAdUnitId, {
+    keywords: adKeywords,
+  });
+
+  useEffect(() => {
+    const loadInterstitial = () => {
+      interstitial.load();
+    };
+
+    const onAdLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
+      setInterstitialLoaded(true);
+    });
+
+    const onAdClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+      setInterstitialLoaded(false);
+      loadInterstitial();
+      navigation.navigate('Resultados');
+    });
+
+    const onAdError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+      console.error('Erro ao carregar o anúncio intersticial:', error);
+      navigation.navigate('Resultados');
+    });
+
+    loadInterstitial();
+
+    return () => {
+      onAdLoaded();
+      onAdClosed();
+      onAdError();
+    };
+  }, [interstitial, navigation]);
+
+  const handleResultadosPress = () => {
+    if (interstitialLoaded) {
+      interstitial.show();
+    } else {
+      navigation.navigate('Resultados');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -21,12 +89,12 @@ function Home({ navigation }) {
 
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('Resultados')}>
+            onPress={handleResultadosPress}>
             <Text style={styles.buttonText}>Resultados</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
-            <Image source={banner} style={styles.banner} />
+            <Image source={bannerImage} style={styles.banner} />
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -1,7 +1,7 @@
 {
   "name": "PalpitesDoBicho",
   "slug": "PalpitesDoBicho",
-  "version": "13.0.0",
+  "version": "3.0.1",
   "orientation": "portrait",
   "icon": "./assets/icon.png",
   "userInterfaceStyle": "light",
@@ -23,7 +23,7 @@
       "backgroundColor": "#ffffff"
     },
     "package": "juliolemos.jogodobicho",
-    "versionCode": 26
+    "versionCode": 301
   },
   "web": {
     "favicon": "./assets/favicon.png"
@@ -34,7 +34,13 @@
     }
   },
   "plugins": [
-
+    [
+      "react-native-google-mobile-ads",
+      {
+        "androidAppId": "ca-app-pub-0562149345323036~2064801742",
+        "iosAppId": "ca-app-pub-0562149345323036~3681582686"
+      }
+    ],
     [
       "expo-build-properties",
       {

@@ -1,5 +1,5 @@
 // src/screens/Historico/index.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,12 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Share from 'react-native-share';
+import { captureRef } from 'react-native-view-shot';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,12 +53,17 @@ function Historico() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPalpite, setSelectedPalpite] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
 
-  const pan = useState(new Animated.ValueXY())[0];
+  const pan = useRef(new Animated.ValueXY()).current;
+  const modalViewRef = useRef();
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderMove: Animated.event(
+      [null, { dx: pan.x, dy: pan.y }],
+      { useNativeDriver: false }
+    ),
     onPanResponderRelease: (e, gestureState) => {
       if (Math.abs(gestureState.dx) > 50) {
         if (gestureState.dx > 0 && currentIndex > 0) {
@@ -98,6 +107,37 @@ function Historico() {
     setModalVisible(false);
   };
 
+  const shareScreen = async () => {
+    if (!modalViewRef.current) {
+      Alert.alert('Erro', 'Não foi possível capturar a tela.');
+      return;
+    }
+
+    try {
+      setIsSharing(true);
+      const uri = await captureRef(modalViewRef, {
+        format: 'png',
+        quality: 0.8,
+      });
+
+      const shareOptions = {
+        title: 'Compartilhar Palpite',
+        url: uri,
+        type: 'image/png',
+        failOnCancel: false,
+      };
+
+      await Share.open(shareOptions);
+    } catch (error) {
+      if (error && error.message !== 'User did not share') {
+        Alert.alert('Erro', 'Não foi possível compartilhar a tela.');
+        console.error('Erro ao compartilhar a tela:', error);
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -126,6 +166,7 @@ function Historico() {
       >
         <View style={styles.modalBackground}>
           <Animated.View
+            ref={modalViewRef}
             style={[
               styles.modalContainer,
               { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
@@ -148,6 +189,17 @@ function Historico() {
                 {selectedPalpite.legenda !== "" && (
                   <Text style={styles.modalLegendaText}>{selectedPalpite.legenda}</Text>
                 )}
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={shareScreen}
+                  disabled={isSharing}
+                >
+                  {isSharing ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.shareButtonText}>Compartilhar Tela</Text>
+                  )}
+                </TouchableOpacity>
               </>
             )}
             {historico.length > 0 && (
@@ -217,16 +269,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    width: width,
-    height: height,
+    width: width * 0.9,
+    maxHeight: height * 0.8,
+    backgroundColor: '#333',
+    borderRadius: 20,
+    padding: 20,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   closeButton: {
     position: 'absolute',
-    top: 40,
-    right: 20,
+    top: 10,
+    right: 15,
     backgroundColor: 'transparent',
     zIndex: 1,
   },
@@ -236,16 +291,17 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   modalImage: {
-    width: width * 0.8,
-    height: width * 0.8,
+    width: width * 0.6,
+    height: width * 0.6,
     borderRadius: 20,
     marginBottom: 20,
   },
   modalAnimalText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#4caf50',
     marginBottom: 10,
+    textAlign: 'center',
   },
   modalNumerosText: {
     fontSize: 18,
@@ -254,21 +310,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalFraseText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#fff',
     textAlign: 'center',
     marginBottom: 10,
   },
   modalLegendaText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     textAlign: 'center',
     fontStyle: 'italic',
+    marginBottom: 20,
+  },
+  shareButton: {
+    backgroundColor: '#25D366',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  shareButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   storyIndicatorContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    top: 20,
+    bottom: 20,
     left: 20,
     right: 20,
     justifyContent: 'center',

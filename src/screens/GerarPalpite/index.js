@@ -1,5 +1,5 @@
 // src/screens/GerarPalpite/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,26 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
-  Linking
+  Linking,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo"; // Importação do NetInfo
 import banner from '../../images/banner_2.png'; // Importação do banner
 import banner2 from '../../images/banner_1.png'; // Importação do banner
+import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
+import { captureRef } from 'react-native-view-shot';
 
+const interstitialAdUnitId = __DEV__
+  ? TestIds.INTERSTITIAL
+  : Platform.OS === 'ios'
+  ? 'ca-app-pub-0562149345323036/3307561050' // Substitua pelo seu ID de anúncio intersticial iOS
+  : 'ca-app-pub-0562149345323036/7614103195'; // Substitua pelo seu ID de anúncio intersticial Android
+
+const adKeywords = [
+  'religião', 'família', 'igreja', 'oração', 'espiritualidade',
+  'religion', 'family', 'church', 'prayer', 'spirituality'
+];
 
 function GerarPalpite() {
   const [palpite, setPalpite] = useState({
@@ -24,10 +38,99 @@ function GerarPalpite() {
     milhar: "",
     animal: "",
     frase: "",
-    legenda: "", // Nova propriedade adicionada
+    legenda: "",
     imagem: "",
   });
   const [palpiteGerado, setPalpiteGerado] = useState(false);
+  const [interstitialLoaded, setInterstitialLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Estado para o loading
+  const viewRef = useRef();
+
+  const interstitial = InterstitialAd.createForAdRequest(interstitialAdUnitId, {
+    keywords: adKeywords,
+  });
+
+  useEffect(() => {
+    const handleAdEvent = (type, error) => {
+      if (type === AdEventType.LOADED) {
+        setInterstitialLoaded(true);
+        setIsLoading(false); // Parar o loading quando o anúncio estiver carregado
+      } else if (type === AdEventType.ERROR) {
+        console.error('Erro ao carregar o anúncio intersticial:', error);
+        setInterstitialLoaded(false);
+        setIsLoading(false); // Parar o loading em caso de erro
+        shareScreen();
+      } else if (type === AdEventType.CLOSED) {
+        setInterstitialLoaded(false);
+        interstitial.load(); // Precarrega o próximo anúncio
+        shareScreen();
+      }
+    };
+
+    const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
+      handleAdEvent(AdEventType.LOADED, null);
+    });
+
+    const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+      handleAdEvent(AdEventType.ERROR, error);
+    });
+
+    const unsubscribeClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+      handleAdEvent(AdEventType.CLOSED, null);
+    });
+
+    // Iniciar o carregamento do anúncio intersticial
+    interstitial.load();
+
+    // Limpar os listeners quando o componente for desmontado
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeError();
+      unsubscribeClosed();
+    };
+  }, [interstitial]);
+
+  const shareScreen = async () => {
+    try {
+      const uri = await captureRef(viewRef, {
+        format: 'png',
+        quality: 0.8,
+      });
+      const message = "Confira meu palpite do dia! Baixe o app também.";
+      await Share.share({
+        message: message,
+        url: uri,
+      });
+    } catch (error) {
+      console.error('Erro ao compartilhar:', error);
+    }
+  };
+
+  const compartilharNoWhatsApp = async () => {
+    try {
+      const state = await NetInfo.fetch();
+      if (!state.isConnected) {
+        // Sem conexão com a internet, compartilhar diretamente
+        shareScreen();
+        return;
+      }
+
+      if (interstitialLoaded) {
+        // Se o anúncio estiver carregado, exibi-lo
+        interstitial.show();
+      } else {
+        // Se o anúncio não estiver carregado, exibir o loading e tentar novamente
+        setIsLoading(true);
+        interstitial.load(); // Tentar carregar novamente
+
+        // A exibição do anúncio será tratada nos eventos de adEvent
+        // Caso o anúncio não carregue, shareScreen será chamado no evento de erro
+      }
+    } catch (error) {
+      console.error('Erro ao compartilhar no WhatsApp:', error);
+      shareScreen();
+    }
+  };
 
   useEffect(() => {
     verificarPalpiteDoDia();
@@ -47,7 +150,7 @@ function GerarPalpite() {
         if (data === dataAtual) {
           const imagem = palpiteData.imagem;
           const frase = palpiteData.frase;
-          const legenda = palpiteData.legenda; // Recupera legenda
+          const legenda = palpiteData.legenda;
           setPalpite({ ...palpiteData, imagem, frase, legenda });
           setPalpiteGerado(true);
           return;
@@ -141,31 +244,6 @@ function GerarPalpite() {
     }
   };
 
-  const compartilharNoWhatsApp = async () => {
-    try {
-      const mensagem =
-        `Confira o meu palpite do dia:\n\n` +
-        `*Animal:* ${palpite.animal}\n` +
-        `*Dezena:* ${palpite.dezena}\n` +
-        `*Centena:* ${palpite.centena}\n` +
-        `*Milhar:* ${palpite.milhar}\n` +
-        `*Frase:* ${palpite.frase}\n` +
-        `*Legenda:* ${palpite.legenda}\n\n` + // Inclui legenda na mensagem
-        `*Baixe para Android*: https://play.google.com/store/apps/details?id=juliolemos.jogodobicho&pli=1\n\n` +
-        `*Baixe para iOS*: https://apps.apple.com/app/id1635698709`;
-
-      await Share.share({
-        message: mensagem,
-        url:
-          Platform.OS === "android"
-            ? "whatsapp://send?text=" + encodeURIComponent(mensagem)
-            : undefined,
-      });
-    } catch (error) {
-      console.error("Erro ao compartilhar no WhatsApp", error);
-    }
-  };
-
   const gerarNumeroAleatorio = (min, max) => {
     const range = max - min + 1;
     return Math.floor(Math.random() * range) + min;
@@ -231,8 +309,34 @@ function GerarPalpite() {
     Vaca: require("../../images/animais/Vaca.png"),
   };
 
-  // Removi a definição de 'const frases = [ ... ]' conforme solicitado.
   // Certifique-se de definir seu próprio array de frases em outro lugar no código.
+  // Adicione as 365 frases conforme necessário.
+  const frases = [
+    "Hoje, ${animal} é a melhor opção para trazer sorte e prosperidade para suas atividades diárias. Aproveite as energias positivas que este dia reserva para você.",
+    "No dia ${data}, o ${animal} ilumina seu caminho com boas energias, guiando-o para decisões acertadas e oportunidades incríveis.",
+    "Com o ${animal} ao seu lado em ${data}, a sorte está garantida em todas as suas empreitadas. Este é o momento ideal para avançar em seus projetos.",
+    "Em ${data}, o ${animal} traz oportunidades únicas para você, permitindo que você alcance novos patamares de sucesso e realização pessoal.",
+    "Hoje, ${data}, o ${animal} simboliza força e sucesso para suas ações, capacitando você a superar qualquer desafio que surja em seu caminho.",
+    "A presença do ${animal} em ${data} assegura um dia de conquistas, onde seus esforços serão recompensados com resultados extraordinários.",
+    "Em ${data}, o ${animal} guia você rumo à sorte e realizações, proporcionando um dia cheio de vitórias e progressos significativos.",
+    "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes metas, oferecendo o suporte necessário para que você alcance seus objetivos com facilidade.",
+    "Com o ${animal} em ${data}, sua sorte está em alta, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
+    "Em ${data}, o ${animal} traz equilíbrio e harmonia para o seu dia, ajudando você a manter a calma e a clareza em todas as situações.",
+    "Hoje, ${data}, o ${animal} simboliza determinação e sucesso, incentivando você a persistir em seus esforços e a colher os frutos de seu trabalho duro.",
+    "A presença do ${animal} em ${data} garante um dia próspero, onde suas ações serão recompensadas com abundância e realizações satisfatórias.",
+    "Em ${data}, o ${animal} ilumina suas decisões com boa sorte, proporcionando clareza e confiança para que você tome as melhores escolhas.",
+    "Hoje, ${data}, o ${animal} é a chave para suas vitórias, abrindo caminhos que levarão você a conquistas que antes pareciam inalcançáveis.",
+    "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
+    "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
+    "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
+    "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
+    "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
+    "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
+    "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
+    "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
+    "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
+    // ... Continue adicionando as demais frases até completar 365
+  ];
 
   const gerarFrase = (data, animal) => {
     // Seleciona uma frase aleatória que ainda não foi usada
@@ -268,10 +372,10 @@ function GerarPalpite() {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-      <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+        <View ref={viewRef} style={styles.container}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
             <Image source={banner2} style={styles.banner2} />
           </TouchableOpacity>
-        <View style={styles.container}>
           {palpite.imagem && (
             <Image source={palpite.imagem} style={styles.imagemAnimal} />
           )}
@@ -298,21 +402,25 @@ function GerarPalpite() {
               <TouchableOpacity
                 style={styles.shareButton}
                 onPress={compartilharNoWhatsApp}
+                disabled={isLoading} // Desabilitar o botão enquanto carrega
               >
-                <Text style={styles.shareButtonText}>
-                  Compartilhar no WhatsApp
-                </Text>
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.shareButtonText}>
+                    Compartilhar no WhatsApp
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.center}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
-            <Image source={banner} style={styles.banner} />
-          </TouchableOpacity>
-
-            <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
-              <Text style={styles.buttonText}>Gerar Palpite</Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+                <Image source={banner} style={styles.banner} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
+                <Text style={styles.buttonText}>Gerar Palpite</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -433,10 +541,10 @@ const styles = StyleSheet.create({
     height: 80,
     marginTop: 20,
     resizeMode: 'contain',
-
   },
-  
 });
+
+
 
 
 // Adicione as 365 frases abaixo. Por motivos de espaço, apresento aqui 100 frases. Você deve continuar o padrão para completar as 365 frases.
