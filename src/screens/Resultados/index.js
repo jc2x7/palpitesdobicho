@@ -1,4 +1,4 @@
-// src/screens/App/index.js
+// src/screens/Resultados/index.js
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   SafeAreaView, 
@@ -11,11 +11,14 @@ import {
   Dimensions,
   Platform,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
-import { Table, Row } from 'react-native-table-component';
+import LinearGradient from 'react-native-linear-gradient';
 import { BannerAd, BannerAdSize, TestIds, useForeground } from 'react-native-google-mobile-ads';
 import Share from 'react-native-share';
-import { captureRef } from 'react-native-view-shot';
+import RNHTMLtoPDF from 'react-native-html-to-pdf';
+import ResultCard from '../../components/ResultCard';
+import { colors } from '../../constants/colors';
 
 const adUnitId = __DEV__
   ? TestIds.ADAPTIVE_BANNER
@@ -23,7 +26,7 @@ const adUnitId = __DEV__
   ? 'ca-app-pub-0562149345323036/8222628770'
   : 'ca-app-pub-0562149345323036/2113244946';
 
-const App = () => {
+const Resultados = () => {
   const bannerRef = useRef(null);
   const screenRef = useRef();
 
@@ -93,43 +96,6 @@ const App = () => {
     }
   };
 
-  const calculateColumnWidths = (numColumns) => {
-    const padding = 16;
-    const availableWidth = screenWidth - padding * 2;
-    const minWidth = 100;
-    return new Array(numColumns).fill(Math.max(availableWidth / numColumns, minWidth));
-  };
-
-  const renderTable = (data, title) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.tableContainer}>
-          <Table>
-            <Row
-              data={data.headers}
-              style={styles.header}
-              textStyle={styles.headerText}
-              widthArr={calculateColumnWidths(data.headers.length)}
-            />
-            {data.rows.map((rowData, index) => (
-              <Row
-                key={index}
-                data={rowData}
-                style={[
-                  styles.row,
-                  index % 2 === 0 ? styles.evenRow : styles.oddRow
-                ]}
-                textStyle={styles.rowText}
-                widthArr={calculateColumnWidths(rowData.length)}
-              />
-            ))}
-          </Table>
-        </View>
-      </ScrollView>
-    </View>
-  );
-
   const getFormattedDate = () => {
     const currentDate = new Date();
     const options = { 
@@ -142,68 +108,273 @@ const App = () => {
     return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
   };
 
-  const shareScreen = async () => {
-    if (!screenRef.current) {
-      Alert.alert('Erro', 'Não foi possível capturar a tela.');
-      return;
-    }
+  const generatePDFHTML = () => {
+    const generateTableHTML = (data, title) => {
+      if (!data || !data.headers || !data.rows) return '';
 
+      let headerHTML = data.headers.map(h => `<th>${h}</th>`).join('');
+      let rowsHTML = data.rows.map((row, index) => {
+        const rowClass = index % 2 === 0 ? 'even-row' : 'odd-row';
+        const cells = row.map(cell => `<td>${cell}</td>`).join('');
+        return `<tr class="${rowClass}">${cells}</tr>`;
+      }).join('');
+
+      return `
+        <div class="table-section">
+          <h2>${title}</h2>
+          <table>
+            <thead>
+              <tr>${headerHTML}</tr>
+            </thead>
+            <tbody>
+              ${rowsHTML}
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+          }
+          
+          .header {
+            text-align: center;
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+          }
+          
+          .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+          }
+          
+          .header p {
+            font-size: 14px;
+            opacity: 0.9;
+          }
+          
+          .table-section {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            page-break-inside: avoid;
+          }
+          
+          .table-section h2 {
+            color: #2e7d32;
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4caf50;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+          }
+          
+          th {
+            background-color: #4caf50;
+            color: white;
+            padding: 8px 6px;
+            text-align: center;
+            font-weight: 700;
+            border: 1px solid #388e3c;
+          }
+          
+          td {
+            padding: 6px 4px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+          }
+          
+          .even-row {
+            background-color: #f5f5f5;
+          }
+          
+          .odd-row {
+            background-color: #ffffff;
+          }
+          
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #4caf50;
+            color: white;
+            border-radius: 10px;
+            font-size: 12px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🏆 Resultados do Jogo do Bicho</h1>
+          <p>${getFormattedDate()}</p>
+        </div>
+        
+        ${generateTableHTML(tableDataAtual, 'Resultados do Dia')}
+        ${generateTableHTML(tableDataAnterior, 'Resultados Anteriores')}
+        
+        <div class="footer">
+          <p>Palpites do Bicho - ${new Date().getFullYear()}</p>
+          <p style="margin-top: 5px; font-size: 11px;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const shareScreen = async () => {
     try {
       setIsSharing(true);
-      const uri = await captureRef(screenRef, {
-        format: 'png',
-        quality: 0.8,
-      });
 
+      // Gera HTML para o PDF
+      const htmlContent = generatePDFHTML();
+      
+      // Configurações do PDF
+      const options = {
+        html: htmlContent,
+        fileName: `Resultados_JogoDoBicho_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}`,
+        directory: 'Documents',
+        base64: true,
+      };
+
+      // Cria o PDF
+      const pdf = await RNHTMLtoPDF.convert(options);
+
+      if (!pdf.filePath) {
+        Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+        setIsSharing(false);
+        return;
+      }
+
+      // Compartilha o PDF
       const shareOptions = {
-        title: 'Compartilhar Tela',
-        url: uri,
-        type: 'image/png',
+        title: 'Compartilhar Resultados',
+        url: `file://${pdf.filePath}`,
+        type: 'application/pdf',
         failOnCancel: false,
       };
 
       await Share.open(shareOptions);
     } catch (error) {
       if (error && error.message !== 'User did not share') {
-        Alert.alert('Erro', 'Não foi possível compartilhar a tela.');
-        console.error('Erro ao compartilhar a tela:', error);
+        Alert.alert('Erro', 'Não foi possível compartilhar os resultados.');
+        console.error('Erro ao compartilhar:', error);
       }
     } finally {
       setIsSharing(false);
     }
   };
 
+  const renderTableWithScroll = (data, title) => (
+    <View style={styles.tableSection}>
+      <View style={styles.scrollHintContainer}>
+        <Text style={styles.scrollHintText}>👉 Arraste para o lado para ver todos os dados</Text>
+      </View>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={true}
+        style={styles.horizontalScroll}
+        persistentScrollbar={true}>
+        <View style={styles.tableContent}>
+          <ResultCard title={title} data={data} />
+        </View>
+      </ScrollView>
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer} ref={screenRef}>
-        <ActivityIndicator size="large" color="#4A5AB9" />
-        <Text style={styles.loadingText}>Carregando dados...</Text>
-        <BannerAd
-          unitId={adUnitId}
-          size={BannerAdSize.MEDIUM_RECTANGLE}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
-          }}
-          style={styles.loadingBanner}
-        />
-                <Text style={styles.loadingText}>Se der erro, volte depois alguns minutos.</Text>
-
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.loadingGradient}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Carregando resultados...</Text>
+          <Text style={styles.loadingSubText}>Aguarde um momento</Text>
+          
+          <View style={styles.loadingBannerContainer}>
+            <BannerAd
+              unitId={adUnitId}
+              size={BannerAdSize.MEDIUM_RECTANGLE}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+            />
+          </View>
+          
+          <Text style={styles.loadingErrorText}>
+            Se der erro, volte depois em alguns minutos.
+          </Text>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} ref={screenRef}>
-      <TouchableOpacity style={styles.shareButtonHeader} onPress={shareScreen} disabled={isSharing}>
-        {isSharing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.shareButtonHeaderText}>Compartilhar</Text>
-        )}
-      </TouchableOpacity>
-      <ScrollView>
-        <View style={styles.dateHeader}>
-          <Text style={styles.dateText}>{getFormattedDate()}</Text>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Header com gradiente */}
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>🏆 Resultados</Text>
+            <Text style={styles.headerDate}>{getFormattedDate()}</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.shareButton} 
+            onPress={shareScreen} 
+            disabled={isSharing}
+            activeOpacity={0.8}>
+            {isSharing ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Text style={styles.shareButtonIcon}>📄</Text>
+                <Text style={styles.shareButtonText}>PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={true}>
+        
+        {/* Banner superior */}
+        <View style={styles.bannerContainer}>
           <BannerAd
             ref={bannerRef}
             unitId={adUnitId}
@@ -213,19 +384,27 @@ const App = () => {
             }}
           />
         </View>
-        <Text style={{margin:5}}>Arraste as tabelas para o lado para poder ler todos os resultados!</Text>
-        {renderTable(tableDataAtual, "Resultados do Dia")}
-        <BannerAd
-          ref={bannerRef}
-          unitId={adUnitId}
-          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: true,
-          }}
-        />
-                <Text style={{margin:5}}>Arraste as tabelas para o lado para poder ler todos os resultados!</Text>
 
-        {renderTable(tableDataAnterior, "Resultados Anteriores")}
+        {/* Resultados do Dia */}
+        {renderTableWithScroll(tableDataAtual, "Resultados do Dia")}
+
+        {/* Banner intermediário */}
+        <View style={styles.bannerContainer}>
+          <BannerAd
+            ref={bannerRef}
+            unitId={adUnitId}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              requestNonPersonalizedAdsOnly: true,
+            }}
+          />
+        </View>
+
+        {/* Resultados Anteriores */}
+        {renderTableWithScroll(tableDataAnterior, "Resultados Anteriores")}
+
+        {/* Espaçamento final */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -234,99 +413,127 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: colors.primary,
+  },
+  loadingGradient: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F6FA',
+    paddingHorizontal: 20,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#2e7d32',
-  },
-  loadingBanner: {
     marginTop: 20,
-  },
-  dateHeader: {
-    backgroundColor: '#2e7d32',
-    padding: 16,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  dateText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  section: {
-    marginVertical: 10,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-    color: '#2C3E50',
+    fontWeight: '700',
+    color: '#fff',
   },
-  tableContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+  loadingSubText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  loadingBannerContainer: {
+    marginTop: 30,
+    borderRadius: 10,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  loadingErrorText: {
+    marginTop: 20,
+    fontSize: 13,
+    color: '#fff',
+    opacity: 0.8,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   header: {
-    height: 50,
-    backgroundColor: '#2e7d32',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  headerText: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  headerDate: {
     fontSize: 14,
-    padding: 5,
+    color: '#fff',
+    opacity: 0.9,
   },
-  row: {
-    height: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  evenRow: {
-    backgroundColor: '#F8FAFC',
-  },
-  oddRow: {
-    backgroundColor: '#FFFFFF',
-  },
-  rowText: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#374151',
-    padding: 5,
-  },
-  shareButtonHeader: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#25D366',
-    paddingVertical: 8,
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
-    zIndex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  shareButtonHeaderText: {
+  shareButtonIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  shareButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  bannerContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  tableSection: {
+    marginVertical: 8,
+  },
+  scrollHintContainer: {
+    backgroundColor: colors.primaryLight,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  scrollHintText: {
+    fontSize: 13,
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  horizontalScroll: {
+    flexGrow: 0,
+  },
+  tableContent: {
+    minWidth: '100%',
+  },
+  bottomSpacer: {
+    height: 20,
   },
 });
 
-export default App;
+export default Resultados;

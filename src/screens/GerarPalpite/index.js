@@ -1,5 +1,5 @@
 // src/screens/GerarPalpite/index.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,19 +12,26 @@ import {
   SafeAreaView,
   Linking,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import NetInfo from "@react-native-community/netinfo"; // Importação do NetInfo
-import banner from '../../images/banner_2.png'; // Importação do banner
-import banner2 from '../../images/banner_1.png'; // Importação do banner
+import NetInfo from "@react-native-community/netinfo";
+import LinearGradient from 'react-native-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import banner from '../../images/banner_2.png';
+import banner2 from '../../images/banner_1.png';
 import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 import { captureRef } from 'react-native-view-shot';
+import { animais, getAnimalPorNumero } from '../../constants/animais';
+import AnimalCard from '../../components/AnimalCard';
+import Card from '../../components/Card';
+import { colors } from '../../constants/colors';
 
 const interstitialAdUnitId = __DEV__
   ? TestIds.INTERSTITIAL
   : Platform.OS === 'ios'
-  ? 'ca-app-pub-0562149345323036/3307561050' // Substitua pelo seu ID de anúncio intersticial iOS
-  : 'ca-app-pub-0562149345323036/7614103195'; // Substitua pelo seu ID de anúncio intersticial Android
+  ? 'ca-app-pub-0562149345323036/3307561050'
+  : 'ca-app-pub-0562149345323036/7614103195';
 
 const adKeywords = [
   'religião', 'família', 'igreja', 'oração', 'espiritualidade',
@@ -43,383 +50,315 @@ function GerarPalpite() {
   });
   const [palpiteGerado, setPalpiteGerado] = useState(false);
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Estado para o loading
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAnimals, setShowAnimals] = useState(false);
   const viewRef = useRef();
 
-  const interstitial = InterstitialAd.createForAdRequest(interstitialAdUnitId, {
-    keywords: adKeywords,
-  });
+  const [interstitial] = useState(() => 
+    InterstitialAd.createForAdRequest(interstitialAdUnitId, {
+      keywords: adKeywords,
+    })
+  );
 
-  useEffect(() => {
-    const handleAdEvent = (type, error) => {
-      if (type === AdEventType.LOADED) {
-        setInterstitialLoaded(true);
-        setIsLoading(false); // Parar o loading quando o anúncio estiver carregado
-      } else if (type === AdEventType.ERROR) {
-        console.error('Erro ao carregar o anúncio intersticial:', error);
-        setInterstitialLoaded(false);
-        setIsLoading(false); // Parar o loading em caso de erro
-        shareScreen();
-      } else if (type === AdEventType.CLOSED) {
-        setInterstitialLoaded(false);
-        interstitial.load(); // Precarrega o próximo anúncio
-        shareScreen();
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      const handleAdEvent = (type, error) => {
+        if (type === AdEventType.LOADED) {
+          setInterstitialLoaded(true);
+          setIsLoading(false);
+        } else if (type === AdEventType.ERROR) {
+          console.error('Erro ao carregar o anúncio intersticial:', error);
+          setInterstitialLoaded(false);
+          setIsLoading(false);
+          shareScreen();
+        } else if (type === AdEventType.CLOSED) {
+          setInterstitialLoaded(false);
+          interstitial.load();
+          shareScreen();
+        }
+      };
 
-    const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
-      handleAdEvent(AdEventType.LOADED, null);
+      const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
+        handleAdEvent(AdEventType.LOADED, null);
+      });
+
+      const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+        handleAdEvent(AdEventType.ERROR, error);
+      });
+
+      const unsubscribeClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+        handleAdEvent(AdEventType.CLOSED, null);
+      });
+
+      interstitial.load();
+
+      // Cleanup ao sair da tela
+      return () => {
+        unsubscribeLoaded();
+        unsubscribeError();
+        unsubscribeClosed();
+        
+        // Mostra o anúncio ao sair da tela
+        if (interstitialLoaded) {
+          interstitial.show();
+        }
+      };
+    }, [interstitial, interstitialLoaded])
+  );
+
+  const gerarPalpite = () => {
+    const dezena = Math.floor(Math.random() * 100);
+    const centena = Math.floor(Math.random() * 1000);
+    const milhar = Math.floor(Math.random() * 10000);
+
+    const dezenaStr = dezena.toString().padStart(2, '0');
+    const animal = getAnimalPorNumero(dezenaStr);
+
+    const frases = frasesMotivacionais;
+    const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
+    const data = new Date().toLocaleDateString('pt-BR');
+    const frase = fraseAleatoria
+      .replace(/\${animal}/g, animal.nome)
+      .replace(/\${data}/g, data);
+
+    const legendas = [
+      `🍀 Palpite do Dia - ${data}`,
+      `🎲 Sorte para ${data}`,
+      `✨ Seu palpite especial de ${data}`,
+      `🌟 Números da sorte - ${data}`,
+    ];
+    const legenda = legendas[Math.floor(Math.random() * legendas.length)];
+
+    setPalpite({
+      dezena: dezenaStr,
+      centena: centena.toString().padStart(3, '0'),
+      milhar: milhar.toString().padStart(4, '0'),
+      animal: animal.nome,
+      frase: frase,
+      legenda: legenda,
+      imagem: animal.imagem,
     });
+    setPalpiteGerado(true);
+    salvarPalpite(dezenaStr, centena, milhar, animal.nome, frase);
+  };
 
-    const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
-      handleAdEvent(AdEventType.ERROR, error);
-    });
-
-    const unsubscribeClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
-      handleAdEvent(AdEventType.CLOSED, null);
-    });
-
-    // Iniciar o carregamento do anúncio intersticial
-    interstitial.load();
-
-    // Limpar os listeners quando o componente for desmontado
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeError();
-      unsubscribeClosed();
-    };
-  }, [interstitial]);
-
-  const shareScreen = async () => {
+  const salvarPalpite = async (dezena, centena, milhar, animal, frase) => {
     try {
-      const uri = await captureRef(viewRef, {
-        format: 'png',
-        quality: 0.8,
-      });
-      const message = "Confira meu palpite do dia! Baixe o app também.";
-      await Share.share({
-        message: message,
-        url: uri,
-      });
+      const historico = await AsyncStorage.getItem("historicoPalpites");
+      const palpites = historico ? JSON.parse(historico) : [];
+      const novoPalpite = {
+        dezena,
+        centena,
+        milhar,
+        animal,
+        frase,
+        data: new Date().toISOString(),
+      };
+      palpites.push(novoPalpite);
+      await AsyncStorage.setItem("historicoPalpites", JSON.stringify(palpites));
     } catch (error) {
-      console.error('Erro ao compartilhar:', error);
+      console.error("Erro ao salvar palpite:", error);
     }
   };
 
-  const compartilharNoWhatsApp = async () => {
-    try {
-      const state = await NetInfo.fetch();
-      if (!state.isConnected) {
-        // Sem conexão com a internet, compartilhar diretamente
-        shareScreen();
-        return;
-      }
+  const compartilhar = async () => {
+    const { isConnected } = await NetInfo.fetch();
+    if (!isConnected) {
+      alert("Sem conexão com a internet. Não é possível compartilhar.");
+      return;
+    }
 
-      if (interstitialLoaded) {
-        // Se o anúncio estiver carregado, exibi-lo
-        interstitial.show();
-      } else {
-        // Se o anúncio não estiver carregado, exibir o loading e tentar novamente
-        setIsLoading(true);
-        interstitial.load(); // Tentar carregar novamente
-
-        // A exibição do anúncio será tratada nos eventos de adEvent
-        // Caso o anúncio não carregue, shareScreen será chamado no evento de erro
-      }
-    } catch (error) {
-      console.error('Erro ao compartilhar no WhatsApp:', error);
+    if (interstitialLoaded) {
+      setIsLoading(true);
+      interstitial.show();
+    } else {
       shareScreen();
     }
   };
 
-  useEffect(() => {
-    verificarPalpiteDoDia();
-  }, []);
-
-  const verificarPalpiteDoDia = async () => {
+  const shareScreen = async () => {
     try {
-      const dataAtual = new Date().toLocaleDateString("pt-BR");
-      const anoAtual = new Date().getFullYear();
-      const palpiteSalvo = await AsyncStorage.getItem("palpiteDoDia_teste3");
-      const usedPhrasesKey = `usedPhrases_${anoAtual}`;
-      const usedPhrasesSalvo = await AsyncStorage.getItem(usedPhrasesKey);
-      const usedPhrases = usedPhrasesSalvo ? JSON.parse(usedPhrasesSalvo) : [];
-
-      if (palpiteSalvo) {
-        const { data, palpite: palpiteData } = JSON.parse(palpiteSalvo);
-        if (data === dataAtual) {
-          const imagem = palpiteData.imagem;
-          const frase = palpiteData.frase;
-          const legenda = palpiteData.legenda;
-          setPalpite({ ...palpiteData, imagem, frase, legenda });
-          setPalpiteGerado(true);
-          return;
-        }
-      }
-      setPalpiteGerado(false);
-    } catch (error) {
-      console.error("Erro ao verificar o palpite do dia", error);
-    }
-  };
-
-  const salvarPalpite = async (novoPalpite) => {
-    try {
-      const dataAtual = new Date().toLocaleDateString("pt-BR");
-      const anoAtual = new Date().getFullYear();
-      const usedPhrasesKey = `usedPhrases_${anoAtual}`;
-      const usedPhrasesSalvo = await AsyncStorage.getItem(usedPhrasesKey);
-      let usedPhrases = usedPhrasesSalvo ? JSON.parse(usedPhrasesSalvo) : [];
-
-      // Verifica se todas as frases já foram usadas
-      if (usedPhrases.length >= frases.length) {
-        // Reseta as frases usadas para o novo ano
-        usedPhrases = [];
-      }
-
-      // Encontra as frases disponíveis
-      const availableIndices = frases
-        .map((_, index) => index)
-        .filter((index) => !usedPhrases.includes(index));
-
-      if (availableIndices.length === 0) {
-        // Todas as frases foram usadas, reseta
-        usedPhrases = [];
-      }
-
-      // Seleciona uma frase aleatória disponível
-      const randomIndex =
-        availableIndices[Math.floor(Math.random() * availableIndices.length)];
-      const fraseSelecionada = frases[randomIndex]
-        .replace("${animal}", novoPalpite.animal)
-        .replace("${data}", dataAtual);
-
-      // Marca a frase como usada
-      usedPhrases.push(randomIndex);
-      await AsyncStorage.setItem(usedPhrasesKey, JSON.stringify(usedPhrases));
-
-      // Prepare a legenda (pode personalizar conforme necessário)
-      const legendaSelecionada = `Sua sorte está guiada pelo ${novoPalpite.animal}!`; // Exemplo de legenda
-
-      // Prepara os dados do palpite
-      const palpiteDoDia = JSON.stringify({
-        data: dataAtual,
-        palpite: {
-          dezena: novoPalpite.dezena,
-          centena: novoPalpite.centena,
-          milhar: novoPalpite.milhar,
-          animal: novoPalpite.animal,
-          frase: fraseSelecionada,
-          legenda: legendaSelecionada, // Inclui legenda
-          imagem: novoPalpite.imagem,   // Inclui caminho da imagem
-        },
+      const uri = await captureRef(viewRef, {
+        format: "png",
+        quality: 0.9,
       });
-      await AsyncStorage.setItem("palpiteDoDia_teste3", palpiteDoDia);
-      setPalpite({ ...novoPalpite, frase: fraseSelecionada, legenda: legendaSelecionada });
-      setPalpiteGerado(true);
 
-      // Atualizar o histórico
-      const historicoSalvo = await AsyncStorage.getItem(
-        "historicoPalpites_teste3"
-      );
-      const historico = historicoSalvo ? JSON.parse(historicoSalvo) : [];
-      historico.unshift({
-        data: dataAtual,
-        dezena: novoPalpite.dezena,
-        centena: novoPalpite.centena,
-        milhar: novoPalpite.milhar,
-        animal: novoPalpite.animal,
-        frase: fraseSelecionada,
-        legenda: legendaSelecionada, // Inclui legenda no histórico
-        imagem: novoPalpite.imagem,   // Inclui imagem no histórico
+      await Share.share({
+        message: `${palpite.legenda}\n\n${palpite.frase}\n\nBaixe o app: https://bit.ly/palpitesdobichoad`,
+        url: uri,
       });
-      if (historico.length > 365) {
-        historico.pop();
-      }
-      await AsyncStorage.setItem(
-        "historicoPalpites_teste3",
-        JSON.stringify(historico)
-      );
+      setIsLoading(false);
     } catch (error) {
-      console.error("Erro ao salvar o palpite", error);
+      console.error("Erro ao compartilhar:", error);
+      setIsLoading(false);
     }
-  };
-
-  const gerarNumeroAleatorio = (min, max) => {
-    const range = max - min + 1;
-    return Math.floor(Math.random() * range) + min;
-  };
-
-  const getAnimalByNumber = (numeroBase) => {
-    const animais = [
-      "Avestruz",
-      "Aguia",
-      "Burro",
-      "Borboleta",
-      "Cachorro",
-      "Cabra",
-      "Carneiro",
-      "Camelo",
-      "Cobra",
-      "Coelho",
-      "Cavalo",
-      "Elefante",
-      "Galo",
-      "Gato",
-      "Jacare",
-      "Leao",
-      "Macaco",
-      "Porco",
-      "Pavao",
-      "Peru",
-      "Touro",
-      "Tigre",
-      "Urso",
-      "Veado",
-      "Vaca",
-    ];
-    const index = Math.floor((numeroBase - 1) / 4);
-    return animais[index];
-  };
-
-  const imagensAnimais = {
-    Avestruz: require("../../images/animais/Avestruz.png"),
-    Aguia: require("../../images/animais/Aguia.png"),
-    Borboleta: require("../../images/animais/Borboleta.png"),
-    Burro: require("../../images/animais/Burro.png"),
-    Cachorro: require("../../images/animais/Cachorro.png"),
-    Cabra: require("../../images/animais/Cabra.png"),
-    Carneiro: require("../../images/animais/Carneiro.png"),
-    Camelo: require("../../images/animais/Camelo.png"),
-    Cobra: require("../../images/animais/Cobra.png"),
-    Coelho: require("../../images/animais/Coelho.png"),
-    Cavalo: require("../../images/animais/Cavalo.png"),
-    Elefante: require("../../images/animais/Elefante.png"),
-    Galo: require("../../images/animais/Galo.png"),
-    Gato: require("../../images/animais/Gato.png"),
-    Jacare: require("../../images/animais/Jacare.png"),
-    Leao: require("../../images/animais/Leao.png"),
-    Macaco: require("../../images/animais/Macaco.png"),
-    Porco: require("../../images/animais/Porco.png"),
-    Pavao: require("../../images/animais/Pavao.png"),
-    Peru: require("../../images/animais/Peru.png"),
-    Touro: require("../../images/animais/Touro.png"),
-    Tigre: require("../../images/animais/Tigre.png"),
-    Urso: require("../../images/animais/Urso.png"),
-    Veado: require("../../images/animais/Veado.png"),
-    Vaca: require("../../images/animais/Vaca.png"),
-  };
-
-  // Certifique-se de definir seu próprio array de frases em outro lugar no código.
-  // Adicione as 365 frases conforme necessário.
-  const frases = [
-    "Hoje, ${animal} é a melhor opção para trazer sorte e prosperidade para suas atividades diárias. Aproveite as energias positivas que este dia reserva para você.",
-    "No dia ${data}, o ${animal} ilumina seu caminho com boas energias, guiando-o para decisões acertadas e oportunidades incríveis.",
-    "Com o ${animal} ao seu lado em ${data}, a sorte está garantida em todas as suas empreitadas. Este é o momento ideal para avançar em seus projetos.",
-    "Em ${data}, o ${animal} traz oportunidades únicas para você, permitindo que você alcance novos patamares de sucesso e realização pessoal.",
-    "Hoje, ${data}, o ${animal} simboliza força e sucesso para suas ações, capacitando você a superar qualquer desafio que surja em seu caminho.",
-    "A presença do ${animal} em ${data} assegura um dia de conquistas, onde seus esforços serão recompensados com resultados extraordinários.",
-    "Em ${data}, o ${animal} guia você rumo à sorte e realizações, proporcionando um dia cheio de vitórias e progressos significativos.",
-    "Hoje, ${data}, o ${animal} é seu aliado para alcançar grandes metas, oferecendo o suporte necessário para que você alcance seus objetivos com facilidade.",
-    "Com o ${animal} em ${data}, sua sorte está em alta, abrindo portas para oportunidades que transformarão seu dia de maneira positiva.",
-    "Em ${data}, o ${animal} traz equilíbrio e harmonia para o seu dia, ajudando você a manter a calma e a clareza em todas as situações.",
-    "Hoje, ${data}, o ${animal} simboliza determinação e sucesso, incentivando você a persistir em seus esforços e a colher os frutos de seu trabalho duro.",
-    "A presença do ${animal} em ${data} garante um dia próspero, onde suas ações serão recompensadas com abundância e realizações satisfatórias.",
-    "Em ${data}, o ${animal} ilumina suas decisões com boa sorte, proporcionando clareza e confiança para que você tome as melhores escolhas.",
-    "Hoje, ${data}, o ${animal} é a chave para suas vitórias, abrindo caminhos que levarão você a conquistas que antes pareciam inalcançáveis.",
-    "Com o ${animal} em ${data}, você alcançará seus objetivos com facilidade, graças à sorte e às energias positivas que o cercam neste dia.",
-    "Em ${data}, o ${animal} traz inspiração e sorte para suas ações, estimulando sua criatividade e proporcionando resultados excepcionais.",
-    "Hoje, ${data}, o ${animal} simboliza perseverança e sucesso, motivando você a continuar firme em seus propósitos e a conquistar tudo o que deseja.",
-    "A presença do ${animal} em ${data} assegura um dia de realizações positivas, onde seus esforços serão reconhecidos e valorizados.",
-    "Em ${data}, o ${animal} guia você para oportunidades valiosas, permitindo que você aproveite cada momento e maximize seus resultados.",
-    "Hoje, ${data}, o ${animal} é seu parceiro para alcançar grandes conquistas, oferecendo o apoio necessário para que você supere qualquer obstáculo.",
-    "Com o ${animal} em ${data}, sua jornada será cheia de sorte, facilitando seu caminho rumo ao sucesso e à satisfação pessoal.",
-    "Em ${data}, o ${animal} traz energia positiva e boas oportunidades, incentivando você a se envolver em atividades que trarão benefícios duradouros.",
-    "Hoje, ${data}, o ${animal} simboliza coragem e sucesso em suas empreitadas, encorajando você a enfrentar desafios com confiança e determinação.",
-    // ... Continue adicionando as demais frases até completar 365
-  ];
-
-  const gerarFrase = (data, animal) => {
-    // Seleciona uma frase aleatória que ainda não foi usada
-    const index = gerarNumeroAleatorio(0, frases.length - 1);
-    const fraseSelecionada = frases[index]
-      .replace("${animal}", animal)
-      .replace("${data}", data);
-    return fraseSelecionada;
-  };
-
-  const gerarPalpite = () => {
-    const numeroBase = gerarNumeroAleatorio(1, 100);
-    const centena = gerarNumeroAleatorio(1, 9) * 100 + (numeroBase % 100);
-    const milhar = gerarNumeroAleatorio(1, 9) * 1000 + (numeroBase % 1000);
-    const animal = getAnimalByNumber(numeroBase === 0 ? 100 : numeroBase);
-    const imagem = imagensAnimais[animal];
-    const dataAtual = new Date().toLocaleDateString("pt-BR");
-    const frase = gerarFrase(dataAtual, animal);
-    const legenda = `Sua sorte está guiada pelo ${animal}!`; // Exemplo de legenda personalizada
-    const novoPalpite = {
-      dezena: numeroBase,
-      centena,
-      milhar,
-      animal,
-      imagem,
-      frase,
-      legenda, // Nova propriedade adicionada
-    };
-    setPalpite(novoPalpite);
-    salvarPalpite(novoPalpite);
   };
 
   return (
     <SafeAreaView style={styles.safeContainer}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        style={styles.headerGradient}>
+        <Text style={styles.headerTitle}>🎲 Gerar Palpite</Text>
+        <Text style={styles.headerSubtitle}>Seu número da sorte!</Text>
+      </LinearGradient>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View ref={viewRef} style={styles.container}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
-            <Image source={banner2} style={styles.banner2} />
-          </TouchableOpacity>
-          {palpite.imagem && (
-            <Image source={palpite.imagem} style={styles.imagemAnimal} />
-          )}
-          {palpite.animal && (
-            <View style={styles.card}>
-              <Text style={styles.animalText}>{palpite.animal}</Text>
-              <Text style={styles.resultText}>Dezena: {palpite.dezena}</Text>
-              <Text style={styles.resultText}>Centena: {palpite.centena}</Text>
-              <Text style={styles.resultText}>Milhar: {palpite.milhar}</Text>
-            </View>
-          )}
-          {palpite.frase !== "" && (
-            <Text style={styles.fraseText}>{palpite.frase}</Text>
-          )}
-          {palpite.legenda !== "" && (
-            <Text style={styles.legendaText}>{palpite.legenda}</Text>
-          )}
-          {palpiteGerado ? (
-            <View style={styles.center}>
-              <Text style={styles.infoText}>
-                Você já tem um palpite para hoje. Aguarde até amanhã para gerar
-                um novo palpite e boa sorte no jogo!
-              </Text>
+        <View style={styles.container}>
+          
+          {!palpiteGerado ? (
+            <>
+              <Card style={styles.instructionCard}>
+                <Text style={styles.instructionTitle}>Como funciona?</Text>
+                <Text style={styles.instructionText}>
+                  Toque no botão abaixo para gerar seus números da sorte!
+                  Você receberá uma dezena, centena, milhar e o animal correspondente.
+                </Text>
+              </Card>
+
               <TouchableOpacity
-                style={styles.shareButton}
-                onPress={compartilharNoWhatsApp}
-                disabled={isLoading} // Desabilitar o botão enquanto carrega
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.shareButtonText}>
-                    Compartilhar no WhatsApp
-                  </Text>
-                )}
+                style={styles.generateButton}
+                onPress={gerarPalpite}
+                activeOpacity={0.8}>
+                <LinearGradient
+                  colors={['#66bb6a', '#43a047']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.generateButtonGradient}>
+                  <Text style={styles.generateButtonText}>✨ Gerar Palpite</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.center}>
+
+              <TouchableOpacity
+                style={styles.viewAnimalsButton}
+                onPress={() => setShowAnimals(!showAnimals)}
+                activeOpacity={0.7}>
+                <Text style={styles.viewAnimalsButtonText}>
+                  {showAnimals ? '📊 Ocultar Tabela' : '📊 Ver Tabela de Animais'}
+                </Text>
+              </TouchableOpacity>
+
+              {showAnimals && (
+                <Card style={styles.animalsContainer}>
+                  <Text style={styles.animalsTitle}>Tabela do Jogo do Bicho</Text>
+                  <View style={styles.animalsGrid}>
+                    {animais.map((animal) => (
+                      <AnimalCard
+                        key={animal.id}
+                        animal={animal}
+                        onPress={() => {}}
+                        isSelected={false}
+                      />
+                    ))}
+                  </View>
+                </Card>
+              )}
+
               <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
                 <Image source={banner} style={styles.banner} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={gerarPalpite}>
-                <Text style={styles.buttonText}>Gerar Palpite</Text>
+            </>
+          ) : (
+            <View ref={viewRef} style={styles.resultContainer}>
+              <LinearGradient
+                colors={['#ffffff', '#f5f5f5']}
+                style={styles.resultGradient}>
+                
+                <View style={styles.resultHeader}>
+                  <Text style={styles.resultTitle}>🍀 Seu Palpite</Text>
+                  <Text style={styles.resultDate}>{new Date().toLocaleDateString('pt-BR')}</Text>
+                </View>
+
+                <View style={styles.animalSection}>
+                  <Image source={palpite.imagem} style={styles.animalImage} resizeMode="contain" />
+                  <Text style={styles.animalName}>{palpite.animal}</Text>
+                </View>
+
+                <View style={styles.numbersContainer}>
+                  <View style={styles.numberBox}>
+                    <Text style={styles.numberLabel}>Dezena</Text>
+                    <LinearGradient
+                      colors={['#4caf50', '#388e3c']}
+                      style={styles.numberValue}>
+                      <Text style={styles.numberText}>{palpite.dezena}</Text>
+                    </LinearGradient>
+                  </View>
+
+                  <View style={styles.numberBox}>
+                    <Text style={styles.numberLabel}>Centena</Text>
+                    <LinearGradient
+                      colors={['#66bb6a', '#43a047']}
+                      style={styles.numberValue}>
+                      <Text style={styles.numberText}>{palpite.centena}</Text>
+                    </LinearGradient>
+                  </View>
+
+                  <View style={styles.numberBox}>
+                    <Text style={styles.numberLabel}>Milhar</Text>
+                    <LinearGradient
+                      colors={['#81c784', '#66bb6a']}
+                      style={styles.numberValue}>
+                      <Text style={styles.numberText}>{palpite.milhar}</Text>
+                    </LinearGradient>
+                  </View>
+                </View>
+
+                <View style={styles.phraseContainer}>
+                  <Text style={styles.phraseText}>{palpite.frase}</Text>
+                </View>
+
+                <View style={styles.watermark}>
+                  <Text style={styles.watermarkText}>Palpites do Bicho</Text>
+                </View>
+              </LinearGradient>
+
+              <View style={styles.actionsContainer}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={compartilhar}
+                  activeOpacity={0.8}
+                  disabled={isLoading}>
+                  <LinearGradient
+                    colors={['#2196f3', '#1976d2']}
+                    style={styles.actionButtonGradient}>
+                    {isLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text style={styles.actionButtonIcon}>📤</Text>
+                        <Text style={styles.actionButtonText}>Compartilhar</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => {
+                    setPalpiteGerado(false);
+                    setPalpite({
+                      dezena: "",
+                      centena: "",
+                      milhar: "",
+                      animal: "",
+                      frase: "",
+                      legenda: "",
+                      imagem: "",
+                    });
+                  }}
+                  activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={['#66bb6a', '#43a047']}
+                    style={styles.actionButtonGradient}>
+                    <Text style={styles.actionButtonIcon}>🔄</Text>
+                    <Text style={styles.actionButtonText}>Novo Palpite</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
+                <Image source={banner2} style={styles.banner} />
               </TouchableOpacity>
             </View>
           )}
@@ -432,124 +371,236 @@ function GerarPalpite() {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: colors.background,
+  },
+  headerGradient: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingBottom: 20,
   },
   container: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    padding: 20,
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  button: {
-    backgroundColor: "#4caf50",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 20,
-    width: "80%",
-    alignItems: "center",
+  instructionCard: {
+    width: '100%',
+    marginBottom: 20,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  instructionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 10,
+    textAlign: 'center',
   },
-  imagemAnimal: {
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    marginTop: 20,
-    borderWidth: 2,
-    borderColor: "green",
+  instructionText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  card: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+  generateButton: {
+    width: '90%',
+    marginBottom: 15,
+    borderRadius: 15,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    alignItems: "center",
-    marginVertical: 20,
-    width: "80%",
+    shadowRadius: 5,
+    elevation: 8,
   },
-  animalText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4caf50",
+  generateButtonGradient: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  generateButtonText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  viewAnimalsButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
     marginBottom: 15,
   },
-  resultText: {
+  viewAnimalsButtonText: {
     fontSize: 16,
-    marginBottom: 5,
+    fontWeight: '600',
+    color: '#fff',
   },
-  fraseText: {
-    fontSize: 16,
-    color: "#4caf50",
-    textAlign: "center",
-    paddingHorizontal: 20,
-    marginTop: 10,
+  animalsContainer: {
+    width: '100%',
+    marginBottom: 20,
   },
-  legendaText: {
-    fontSize: 16,
-    color: "#333",
-    textAlign: "center",
-    paddingHorizontal: 20,
-    marginTop: 10,
+  animalsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 15,
   },
-  shareButton: {
-    backgroundColor: "#25D366",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-    alignItems: "center",
-    width: "80%",
-  },
-  shareButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  center: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-  },
-  infoText: {
-    fontSize: 16,
-    fontStyle: "italic",
-    color: "#666",
-    textAlign: "center",
-    paddingHorizontal: 20,
-    marginTop: 20,
+  animalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   banner: {
-    width: 400,
-    height: 200, // Ajuste a altura conforme necessário
-    marginVertical: 20,
+    width: 350,
+    height: 175,
+    marginVertical: 15,
     resizeMode: 'contain',
+    borderRadius: 10,
   },
-  banner2: {
-    width: 380, // Ocupa toda a largura disponível
-    height: 80,
-    marginTop: 20,
-    resizeMode: 'contain',
+  resultContainer: {
+    width: '100%',
+  },
+  resultGradient: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+  },
+  resultHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  resultTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 5,
+  },
+  resultDate: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  animalSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  animalImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 10,
+  },
+  animalName: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  numbersContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  numberBox: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  numberLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  numberValue: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  numberText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  phraseContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+  },
+  phraseText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  watermark: {
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  watermarkText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 15,
+  },
+  actionButtonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 
 
-
-
 // Adicione as 365 frases abaixo. Por motivos de espaço, apresento aqui 100 frases. Você deve continuar o padrão para completar as 365 frases.
-
-const frases = [
+const frasesMotivacionais = [
   "Hoje, ${animal} é a melhor opção para trazer sorte e prosperidade para suas atividades diárias. Aproveite as energias positivas que este dia reserva para você.",
   "No dia ${data}, o ${animal} ilumina seu caminho com boas energias, guiando-o para decisões acertadas e oportunidades incríveis.",
   "Com o ${animal} ao seu lado em ${data}, a sorte está garantida em todas as suas empreitadas. Este é o momento ideal para avançar em seus projetos.",

@@ -1,22 +1,27 @@
 // src/screens/Home/index.js
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  SafeAreaView, 
-  ScrollView, 
-  Linking, 
-  Platform 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  Linking,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import logo from '../../images/logo.png'; // Importação da logo
-import bannerImage from '../../images/banner_2.png'; // Importação do banner
-import { 
-  InterstitialAd, 
-  AdEventType, 
-  TestIds 
+import LinearGradient from 'react-native-linear-gradient';
+import logo from '../../images/logo.png';
+import bannerImage from '../../images/banner_2.png';
+import GradientButton from '../../components/GradientButton';
+import Card from '../../components/Card';
+import { colors } from '../../constants/colors';
+import {
+  InterstitialAd,
+  AdEventType,
+  TestIds,
 } from 'react-native-google-mobile-ads';
 
 const interstitialAdUnitId = __DEV__
@@ -26,42 +31,61 @@ const interstitialAdUnitId = __DEV__
   : 'ca-app-pub-0562149345323036/9542002948';
 
 const adKeywords = [
-  'Aposta', 'Jogos', 'Loteria', 'Bingo', 'Futebol',
-  'Bet', 'Flamengo', 'Amazon', 'Shoppe', 'Aliexpress'
+  'Aposta',
+  'Jogos',
+  'Loteria',
+  'Bingo',
+  'Futebol',
+  'Bet',
+  'Flamengo',
+  'Amazon',
+  'Shoppe',
+  'Aliexpress',
 ];
 
 function Home({ navigation }) {
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
-  const interstitial = InterstitialAd.createForAdRequest(interstitialAdUnitId, {
-    keywords: adKeywords,
-  });
+  const [interstitial] = useState(() =>
+    InterstitialAd.createForAdRequest(interstitialAdUnitId, {
+      keywords: adKeywords,
+    })
+  );
 
   useEffect(() => {
     const loadInterstitial = () => {
       interstitial.load();
     };
 
-    const onAdLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
-      setInterstitialLoaded(true);
-    });
+    const unsubscribeLoaded = interstitial.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        setInterstitialLoaded(true);
+      }
+    );
 
-    const onAdClosed = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
-      setInterstitialLoaded(false);
-      loadInterstitial();
-      navigation.navigate('Resultados');
-    });
+    const unsubscribeClosed = interstitial.addAdEventListener(
+      AdEventType.CLOSED,
+      () => {
+        setInterstitialLoaded(false);
+        loadInterstitial();
+        navigation.navigate('Resultados');
+      }
+    );
 
-    const onAdError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
-      console.error('Erro ao carregar o anúncio intersticial:', error);
-      navigation.navigate('Resultados');
-    });
+    const unsubscribeError = interstitial.addAdEventListener(
+      AdEventType.ERROR,
+      (error) => {
+        console.error('Erro ao carregar o anúncio intersticial:', error);
+        navigation.navigate('Resultados');
+      }
+    );
 
     loadInterstitial();
 
     return () => {
-      onAdLoaded();
-      onAdClosed();
-      onAdError();
+      unsubscribeLoaded();
+      unsubscribeClosed();
+      unsubscribeError();
     };
   }, [interstitial, navigation]);
 
@@ -73,43 +97,71 @@ function Home({ navigation }) {
     }
   };
 
+  const handleBannerPress = () => {
+    Linking.openURL('https://bit.ly/palpitesdobichoad');
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.container}>
-          <Image source={logo} style={styles.logo} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <LinearGradient
+        colors={[colors.background, '#e8f5e9', '#f1f8f4']}
+        style={styles.gradient}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.container}>
+            {/* Logo com Card */}
+            <Card style={styles.logoCard}>
+              <Image source={logo} style={styles.logo} resizeMode="contain" />
+              <Text style={styles.header}>Gerador de Números</Text>
+              <Text style={styles.subtitle}>
+                Seus palpites de sorte! 🍀
+              </Text>
+            </Card>
 
-          <Text style={styles.header}>Gerador de Números</Text>
+            {/* Botões principais */}
+            <View style={styles.buttonsContainer}>
+              <GradientButton
+                title="Gerar Palpite"
+                icon="🎲"
+                onPress={() => navigation.navigate('Gerar Palpite')}
+              />
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('Gerar Palpite')}>
-            <Text style={styles.buttonText}>Gerar Palpite</Text>
-          </TouchableOpacity>
+              <GradientButton
+                title="Resultados"
+                icon="🏆"
+                onPress={handleResultadosPress}
+              />
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleResultadosPress}>
-            <Text style={styles.buttonText}>Resultados</Text>
-          </TouchableOpacity>
+              {/* Banner com Card */}
+              <Card style={styles.bannerCard}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleBannerPress}>
+                  <Image source={bannerImage} style={styles.banner} />
+                </TouchableOpacity>
+              </Card>
 
-          <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
-            <Image source={bannerImage} style={styles.banner} />
-          </TouchableOpacity>
+              <GradientButton
+                title="Histórico"
+                icon="📊"
+                onPress={() => navigation.navigate('Historico')}
+              />
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('Historico')}>
-            <Text style={styles.buttonText}>Histórico</Text>
-          </TouchableOpacity>
+              <GradientButton
+                title="Sobre"
+                icon="ℹ️"
+                onPress={() => navigation.navigate('Sobre')}
+              />
+            </View>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('Sobre')}>
-            <Text style={styles.buttonText}>Sobre</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            {/* Footer */}
+            <Text style={styles.footer}>
+            </Text>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
@@ -117,49 +169,68 @@ function Home({ navigation }) {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#e8f5e9',
+    backgroundColor: colors.background,
+  },
+  gradient: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingVertical: 20,
     alignItems: 'center',
   },
   container: {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    paddingHorizontal: 20,
   },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-    fontWeight: 'bold',
-    color: '#2e7d32', // Um tom escuro de verde
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#4caf50', // Um tom médio de verde
-    padding: 15,
-    borderRadius: 10,
-    marginVertical: 10,
-    width: '80%',
+  logoCard: {
     alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    marginBottom: 10,
   },
   logo: {
-    width: 250, // Defina o tamanho conforme necessário
-    height: 250, // Defina o tamanho conforme necessário
-    marginBottom: 20,
-    borderRadius: 20, // Arredonda as bordas da imagem
+    width: 180,
+    height: 180,
+    marginBottom: 15,
+    borderRadius: 90,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 5,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  buttonsContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  bannerCard: {
+    padding: 10,
+    marginVertical: 15,
   },
   banner: {
-    width: 400,
-    height: 200, // Ajuste a altura conforme necessário
-    marginVertical: 20,
+    width: '100%',
+    height: 160,
     resizeMode: 'contain',
+    borderRadius: 10,
+  },
+  footer: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+    fontWeight: '600',
   },
 });
 
