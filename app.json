@@ -1,53 +1,57 @@
 {
-  "name": "PalpitesDoBicho",
-  "slug": "PalpitesDoBicho",
-  "version": "3.0.1",
-  "orientation": "portrait",
-  "icon": "./assets/icon.png",
-  "userInterfaceStyle": "light",
-  "splash": {
-    "image": "./assets/splash.png",
-    "resizeMode": "contain",
-    "backgroundColor": "#ffffff"
-  },
-  "assetBundlePatterns": [
-    "**/*"
-  ],
-  "ios": {
-    "supportsTablet": true,
-    "bundleIdentifier": "com.juliolemosdf.palpitesdobicho"
-  },
-  "android": {
-    "adaptiveIcon": {
-      "foregroundImage": "./assets/adaptive-icon.png",
+  "expo": {
+    "name": "PalpitesDoBicho",
+    "slug": "PalpitesDoBicho",
+    "version": "1601",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "package": "juliolemos.jogodobicho",
-    "versionCode": 301
-  },
-  "web": {
-    "favicon": "./assets/favicon.png"
-  },
-  "extra": {
-    "eas": {
-      "projectId": "a4ccb149-f20f-4d6e-89f2-3f5cbc682f29"
-    }
-  },
-  "plugins": [
-    [
-      "react-native-google-mobile-ads",
-      {
-        "androidAppId": "ca-app-pub-0562149345323036~2064801742",
-        "iosAppId": "ca-app-pub-0562149345323036~3681582686"
-      }
+    "assetBundlePatterns": [
+      "**/*"
     ],
-    [
-      "expo-build-properties",
-      {
-        "ios": {
-          "useFrameworks": "static"
-        }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.juliolemosdf.palpitesdobicho",
+      "infoPlist": {
+"NSPhotoLibraryUsageDescription": "Nosso aplicativo precisa de acesso à sua galeria para permitir que você salve ou compartilhe imagens relacionadas aos seus palpites."      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "juliolemos.jogodobicho",
+      "versionCode": 1601
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a4ccb149-f20f-4d6e-89f2-3f5cbc682f29"
       }
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-0562149345323036~2064801742",
+          "iosAppId": "ca-app-pub-0562149345323036~3681582686"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ]
-  ]
+  }
 }

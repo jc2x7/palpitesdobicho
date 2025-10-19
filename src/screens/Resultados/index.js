@@ -1,7 +1,6 @@
 // src/screens/Resultados/index.js
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  SafeAreaView, 
   StyleSheet, 
   ActivityIndicator, 
   View, 
@@ -13,12 +12,15 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { BannerAd, BannerAdSize, TestIds, useForeground } from 'react-native-google-mobile-ads';
 import Share from 'react-native-share';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import ResultCard from '../../components/ResultCard';
 import { colors } from '../../constants/colors';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const adUnitId = __DEV__
   ? TestIds.ADAPTIVE_BANNER
@@ -28,7 +30,6 @@ const adUnitId = __DEV__
 
 const Resultados = () => {
   const bannerRef = useRef(null);
-  const screenRef = useRef();
 
   useForeground(() => {
     if (Platform.OS === 'ios') {
@@ -39,14 +40,11 @@ const Resultados = () => {
   const [loading, setLoading] = useState(true);
   const [tableDataAtual, setTableDataAtual] = useState({ headers: [], rows: [] });
   const [tableDataAnterior, setTableDataAnterior] = useState({ headers: [], rows: [] });
-  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
-      setTableDataAtual({ headers: [], rows: [] });
-      setTableDataAnterior({ headers: [], rows: [] });
       await new Promise((resolve) => setTimeout(resolve, 3000));
       await fetchResultadosAtual();
       await fetchResultadosAnteriores();
@@ -54,44 +52,38 @@ const Resultados = () => {
     };
 
     initializeData();
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setScreenWidth(window.width);
-    });
-
-    return () => {
-      subscription?.remove();
-    };
   }, []);
 
   const fetchResultadosAtual = async () => {
     try {
-      const response = await fetch(`https://correcaodesolo.com.br/teste/resultados_atual.json?t=${Date.now()}`, {
-        cache: 'no-store',
-      });
+      const response = await fetch(
+        `https://correcaodesolo.com.br/teste/resultados_atual.json?t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
       const json = await response.json();
       setTableDataAtual({
         headers: json.headers,
         rows: json.rows,
       });
     } catch (error) {
-      console.error('Erro ao buscar ou processar resultados atuais:', error);
+      console.error('Erro ao buscar resultados atuais:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao buscar os resultados atuais.');
     }
   };
 
   const fetchResultadosAnteriores = async () => {
     try {
-      const response = await fetch(`https://correcaodesolo.com.br/teste/resultados_anteriores.json?t=${Date.now()}`, {
-        cache: 'no-store',
-      });
+      const response = await fetch(
+        `https://correcaodesolo.com.br/teste/resultados_anteriores.json?t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
       const json = await response.json();
       setTableDataAnterior({
         headers: json.headers,
         rows: json.rows,
       });
     } catch (error) {
-      console.error('Erro ao buscar ou processar resultados anteriores:', error);
+      console.error('Erro ao buscar resultados anteriores:', error);
       Alert.alert('Erro', 'Ocorreu um erro ao buscar os resultados anteriores.');
     }
   };
@@ -141,19 +133,13 @@ const Resultados = () => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
+          * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             padding: 20px;
             background-color: #f5f5f5;
             color: #333;
           }
-          
           .header {
             text-align: center;
             background: linear-gradient(135deg, #4caf50, #388e3c);
@@ -162,17 +148,8 @@ const Resultados = () => {
             border-radius: 10px;
             margin-bottom: 20px;
           }
-          
-          .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
-          }
-          
-          .header p {
-            font-size: 14px;
-            opacity: 0.9;
-          }
-          
+          .header h1 { font-size: 24px; margin-bottom: 8px; }
+          .header p { font-size: 14px; opacity: 0.9; }
           .table-section {
             margin-bottom: 30px;
             background: white;
@@ -181,7 +158,6 @@ const Resultados = () => {
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             page-break-inside: avoid;
           }
-          
           .table-section h2 {
             color: #2e7d32;
             font-size: 18px;
@@ -190,13 +166,7 @@ const Resultados = () => {
             padding-bottom: 10px;
             border-bottom: 2px solid #4caf50;
           }
-          
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10px;
-          }
-          
+          table { width: 100%; border-collapse: collapse; font-size: 10px; }
           th {
             background-color: #4caf50;
             color: white;
@@ -205,21 +175,13 @@ const Resultados = () => {
             font-weight: 700;
             border: 1px solid #388e3c;
           }
-          
           td {
             padding: 6px 4px;
             text-align: center;
             border: 1px solid #e0e0e0;
           }
-          
-          .even-row {
-            background-color: #f5f5f5;
-          }
-          
-          .odd-row {
-            background-color: #ffffff;
-          }
-          
+          .even-row { background-color: #f5f5f5; }
+          .odd-row { background-color: #ffffff; }
           .footer {
             text-align: center;
             margin-top: 30px;
@@ -233,13 +195,11 @@ const Resultados = () => {
       </head>
       <body>
         <div class="header">
-          <h1>🏆 Resultados do Jogo do Bicho</h1>
+          <h1>🏆 Resultados</h1>
           <p>${getFormattedDate()}</p>
         </div>
-        
         ${generateTableHTML(tableDataAtual, 'Resultados do Dia')}
         ${generateTableHTML(tableDataAnterior, 'Resultados Anteriores')}
-        
         <div class="footer">
           <p>Palpites do Bicho - ${new Date().getFullYear()}</p>
           <p style="margin-top: 5px; font-size: 11px;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
@@ -253,27 +213,22 @@ const Resultados = () => {
     try {
       setIsSharing(true);
 
-      // Gera HTML para o PDF
       const htmlContent = generatePDFHTML();
       
-      // Configurações do PDF
       const options = {
         html: htmlContent,
-        fileName: `Resultados_JogoDoBicho_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}`,
+        fileName: `Resultados_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}`,
         directory: 'Documents',
         base64: true,
       };
 
-      // Cria o PDF
       const pdf = await RNHTMLtoPDF.convert(options);
 
       if (!pdf.filePath) {
         Alert.alert('Erro', 'Não foi possível gerar o PDF.');
-        setIsSharing(false);
         return;
       }
 
-      // Compartilha o PDF
       const shareOptions = {
         title: 'Compartilhar Resultados',
         url: `file://${pdf.filePath}`,
@@ -292,26 +247,9 @@ const Resultados = () => {
     }
   };
 
-  const renderTableWithScroll = (data, title) => (
-    <View style={styles.tableSection}>
-      <View style={styles.scrollHintContainer}>
-        <Text style={styles.scrollHintText}>👉 Arraste para o lado para ver todos os dados</Text>
-      </View>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={true}
-        style={styles.horizontalScroll}
-        persistentScrollbar={true}>
-        <View style={styles.tableContent}>
-          <ResultCard title={title} data={data} />
-        </View>
-      </ScrollView>
-    </View>
-  );
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer} ref={screenRef}>
+      <View style={styles.loadingContainer}>
         <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <LinearGradient
           colors={[colors.primary, colors.primaryDark]}
@@ -334,15 +272,15 @@ const Resultados = () => {
             Se der erro, volte depois em alguns minutos.
           </Text>
         </LinearGradient>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} ref={screenRef}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
-      {/* Header com gradiente */}
+      {/* Header */}
       <LinearGradient
         colors={[colors.primary, colors.primaryDark]}
         style={styles.header}>
@@ -371,7 +309,8 @@ const Resultados = () => {
 
       <ScrollView 
         style={styles.scrollView}
-        showsVerticalScrollIndicator={true}>
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         
         {/* Banner superior */}
         <View style={styles.bannerContainer}>
@@ -386,7 +325,12 @@ const Resultados = () => {
         </View>
 
         {/* Resultados do Dia */}
-        {renderTableWithScroll(tableDataAtual, "Resultados do Dia")}
+        <View style={styles.tableSection}>
+          <View style={styles.hintCard}>
+            <Text style={styles.hintText}>👉 Arraste para o lado para ver todos os dados</Text>
+          </View>
+          <ResultCard title="Resultados do Dia" data={tableDataAtual} />
+        </View>
 
         {/* Banner intermediário */}
         <View style={styles.bannerContainer}>
@@ -401,9 +345,13 @@ const Resultados = () => {
         </View>
 
         {/* Resultados Anteriores */}
-        {renderTableWithScroll(tableDataAnterior, "Resultados Anteriores")}
+        <View style={styles.tableSection}>
+          <View style={styles.hintCard}>
+            <Text style={styles.hintText}>👉 Arraste para o lado para ver todos os dados</Text>
+          </View>
+          <ResultCard title="Resultados Anteriores" data={tableDataAnterior} />
+        </View>
 
-        {/* Espaçamento final */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -503,36 +451,40 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   bannerContainer: {
     alignItems: 'center',
     marginVertical: 16,
-    paddingHorizontal: 16,
   },
   tableSection: {
     marginVertical: 8,
+    paddingHorizontal: 16,
   },
-  scrollHintContainer: {
+  hintCard: {
     backgroundColor: colors.primaryLight,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  scrollHintText: {
+  hintText: {
     fontSize: 13,
     color: '#fff',
     textAlign: 'center',
     fontWeight: '600',
   },
-  horizontalScroll: {
-    flexGrow: 0,
-  },
-  tableContent: {
-    minWidth: '100%',
-  },
   bottomSpacer: {
-    height: 20,
+    height: 30,
   },
 });
 

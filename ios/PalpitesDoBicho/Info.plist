@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>15.0.0</string>
+    <string>16.0.3</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -29,10 +29,14 @@
         <array>
           <string>com.juliolemosdf.palpitesdobicho</string>
         </array>
+        <key>NSPhotoLibraryUsageDescription</key>
+<string>Precisamos de acesso à sua galeria para salvar e compartilhar a imagem do seu palpite gerado.</string>
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Precisamos de permissão para salvar a imagem do seu palpite em sua galeria antes de compartilhar.</string>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>1500</string>
+    <string>1603</string>
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-0562149345323036~3681582686</string>
     <key>GADDelayAppMeasurementInit</key>
@@ -48,6 +52,8 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>RCTNewArchEnabled</key>
+    <true/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

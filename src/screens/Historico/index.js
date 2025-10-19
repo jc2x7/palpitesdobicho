@@ -48,6 +48,26 @@ const imagensAnimais = {
   Vaca: require('../../images/animais/Vaca.png'),
 };
 
+// --- NOVA FUNÇÃO PARA FORMATAR A DATA ---
+const formatarData = (dataString) => {
+  // Se a data não existir, retorna uma string vazia
+  if (!dataString) return '';
+  
+  const data = new Date(dataString);
+
+  // Verifica se a data criada é válida
+  if (isNaN(data.getTime())) {
+    return dataString; // Se for inválida, retorna o valor original
+  }
+
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0'); // Mês é base 0 (janeiro = 0), por isso +1
+  const ano = data.getFullYear();
+
+  return `${dia}/${mes}/${ano}`;
+};
+
+
 function Historico() {
   const [historico, setHistorico] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -81,7 +101,7 @@ function Historico() {
   useEffect(() => {
     const carregarHistorico = async () => {
       try {
-        const historicoSalvo = await AsyncStorage.getItem('historicoPalpites_teste3');
+        const historicoSalvo = await AsyncStorage.getItem('historicoPalpites');
         if (historicoSalvo) {
           setHistorico(JSON.parse(historicoSalvo));
         } else {
@@ -144,7 +164,8 @@ function Historico() {
         {historico.length > 0 ? (
           historico.map((palpite, index) => (
             <TouchableOpacity key={index} style={styles.card} onPress={() => abrirModal(palpite, index)}>
-              <Text style={styles.dataText}>Data: {palpite.data}</Text>
+              {/* --- LINHA ALTERADA --- */}
+              <Text style={styles.dataText}>Data: {formatarData(palpite.data)}</Text>
               <Text style={styles.animalText}>Animal: {palpite.animal}</Text>
               <Text style={styles.numerosText}>
                 Dezena: {palpite.dezena} | Centena: {palpite.centena} | Milhar: {palpite.milhar}

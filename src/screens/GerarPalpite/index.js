@@ -1,5 +1,5 @@
 // src/screens/GerarPalpite/index.js
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   Share,
   Platform,
   ScrollView,
-  SafeAreaView,
   Linking,
   ActivityIndicator,
   StatusBar,
@@ -92,13 +91,11 @@ function GerarPalpite() {
 
       interstitial.load();
 
-      // Cleanup ao sair da tela
       return () => {
         unsubscribeLoaded();
         unsubscribeError();
         unsubscribeClosed();
         
-        // Mostra o anúncio ao sair da tela
         if (interstitialLoaded) {
           interstitial.show();
         }
@@ -195,354 +192,350 @@ function GerarPalpite() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.headerGradient}>
-        <Text style={styles.headerTitle}>🎲 Gerar Palpite</Text>
-        <Text style={styles.headerSubtitle}>Seu número da sorte!</Text>
-      </LinearGradient>
+      
+      <ScrollView 
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}>
+        
+        {!palpiteGerado ? (
+          <>
+            {/* Card Instruções */}
+            <View style={styles.whiteCard}>
+              <Text style={styles.cardTitle}>✨ Como funciona?</Text>
+              <Text style={styles.cardText}>
+                Toque no botão abaixo para gerar seus números da sorte!
+              </Text>
+            </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.container}>
-          
-          {!palpiteGerado ? (
-            <>
-              <Card style={styles.instructionCard}>
-                <Text style={styles.instructionTitle}>Como funciona?</Text>
-                <Text style={styles.instructionText}>
-                  Toque no botão abaixo para gerar seus números da sorte!
-                  Você receberá uma dezena, centena, milhar e o animal correspondente.
-                </Text>
-              </Card>
+            {/* Botão Gerar Palpite */}
+            <TouchableOpacity 
+              style={styles.bigButton}
+              onPress={gerarPalpite}
+              activeOpacity={0.7}>
+              <Text style={styles.bigButtonText}>🎲 Gerar Palpite</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.generateButton}
-                onPress={gerarPalpite}
-                activeOpacity={0.8}>
-                <LinearGradient
-                  colors={['#66bb6a', '#43a047']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.generateButtonGradient}>
-                  <Text style={styles.generateButtonText}>✨ Gerar Palpite</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+            {/* Botão Ver Tabela */}
+            <TouchableOpacity 
+              style={[styles.smallButton, showAnimals && styles.smallButtonDanger]}
+              onPress={() => setShowAnimals(!showAnimals)}
+              activeOpacity={0.7}>
+              <Text style={styles.smallButtonText}>
+                {showAnimals ? '✕ Ocultar Tabela' : '📊 Ver Tabela de Animais'}
+              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.viewAnimalsButton}
-                onPress={() => setShowAnimals(!showAnimals)}
-                activeOpacity={0.7}>
-                <Text style={styles.viewAnimalsButtonText}>
-                  {showAnimals ? '📊 Ocultar Tabela' : '📊 Ver Tabela de Animais'}
-                </Text>
-              </TouchableOpacity>
+            {/* Tabela de Animais */}
+            {showAnimals && (
+              <View style={styles.whiteCard}>
+                <Text style={styles.cardTitle}>Tabela dos Bichos</Text>
+                <View style={styles.animalsGrid}>
+                  {animais.map((animal) => (
+                    <AnimalCard
+                      key={animal.id}
+                      animal={animal}
+                      style={styles.animalCard}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
 
-              {showAnimals && (
-                <Card style={styles.animalsContainer}>
-                  <Text style={styles.animalsTitle}>Tabela do Jogo do Bicho</Text>
-                  <View style={styles.animalsGrid}>
-                    {animais.map((animal) => (
-                      <AnimalCard
-                        key={animal.id}
-                        animal={animal}
-                        onPress={() => {}}
-                        isSelected={false}
-                      />
-                    ))}
-                  </View>
-                </Card>
-              )}
-
+            {/* Banner */}
+            <View style={styles.bannerContainer}>
               <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
                 <Image source={banner} style={styles.banner} />
               </TouchableOpacity>
-            </>
-          ) : (
-            <View ref={viewRef} style={styles.resultContainer}>
-              <LinearGradient
-                colors={['#ffffff', '#f5f5f5']}
-                style={styles.resultGradient}>
-                
-                <View style={styles.resultHeader}>
-                  <Text style={styles.resultTitle}>🍀 Seu Palpite</Text>
-                  <Text style={styles.resultDate}>{new Date().toLocaleDateString('pt-BR')}</Text>
-                </View>
-
-                <View style={styles.animalSection}>
-                  <Image source={palpite.imagem} style={styles.animalImage} resizeMode="contain" />
-                  <Text style={styles.animalName}>{palpite.animal}</Text>
-                </View>
-
-                <View style={styles.numbersContainer}>
-                  <View style={styles.numberBox}>
-                    <Text style={styles.numberLabel}>Dezena</Text>
-                    <LinearGradient
-                      colors={['#4caf50', '#388e3c']}
-                      style={styles.numberValue}>
-                      <Text style={styles.numberText}>{palpite.dezena}</Text>
-                    </LinearGradient>
-                  </View>
-
-                  <View style={styles.numberBox}>
-                    <Text style={styles.numberLabel}>Centena</Text>
-                    <LinearGradient
-                      colors={['#66bb6a', '#43a047']}
-                      style={styles.numberValue}>
-                      <Text style={styles.numberText}>{palpite.centena}</Text>
-                    </LinearGradient>
-                  </View>
-
-                  <View style={styles.numberBox}>
-                    <Text style={styles.numberLabel}>Milhar</Text>
-                    <LinearGradient
-                      colors={['#81c784', '#66bb6a']}
-                      style={styles.numberValue}>
-                      <Text style={styles.numberText}>{palpite.milhar}</Text>
-                    </LinearGradient>
-                  </View>
-                </View>
-
-                <View style={styles.phraseContainer}>
-                  <Text style={styles.phraseText}>{palpite.frase}</Text>
-                </View>
-
-                <View style={styles.watermark}>
-                  <Text style={styles.watermarkText}>Palpites do Bicho</Text>
-                </View>
-              </LinearGradient>
-
-              <View style={styles.actionsContainer}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={compartilhar}
-                  activeOpacity={0.8}
-                  disabled={isLoading}>
-                  <LinearGradient
-                    colors={['#2196f3', '#1976d2']}
-                    style={styles.actionButtonGradient}>
-                    {isLoading ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Text style={styles.actionButtonIcon}>📤</Text>
-                        <Text style={styles.actionButtonText}>Compartilhar</Text>
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => {
-                    setPalpiteGerado(false);
-                    setPalpite({
-                      dezena: "",
-                      centena: "",
-                      milhar: "",
-                      animal: "",
-                      frase: "",
-                      legenda: "",
-                      imagem: "",
-                    });
-                  }}
-                  activeOpacity={0.8}>
-                  <LinearGradient
-                    colors={['#66bb6a', '#43a047']}
-                    style={styles.actionButtonGradient}>
-                    <Text style={styles.actionButtonIcon}>🔄</Text>
-                    <Text style={styles.actionButtonText}>Novo Palpite</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
+            {/* Resultado para Captura */}
+            <View ref={viewRef} style={styles.resultCard}>
+              <View style={styles.resultHeader}>
+                <Text style={styles.resultHeaderTitle}>🍀 Seu Palpite</Text>
+                <Text style={styles.resultHeaderDate}>
+                  {new Date().toLocaleDateString('pt-BR')}
+                </Text>
               </View>
 
+              <View style={styles.animalSection}>
+                <View style={styles.animalCircle}>
+                  <Image 
+                    source={palpite.imagem} 
+                    style={styles.animalImg} 
+                    resizeMode="contain" 
+                  />
+                </View>
+                <Text style={styles.animalNameText}>{palpite.animal}</Text>
+              </View>
+
+              <View style={styles.numbersRow}>
+                <View style={styles.numBox}>
+                  <Text style={styles.numLabel}>Dezena</Text>
+                  <View style={styles.numValue}>
+                    <Text style={styles.numText}>{palpite.dezena}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.numBox}>
+                  <Text style={styles.numLabel}>Centena</Text>
+                  <View style={styles.numValue}>
+                    <Text style={styles.numText}>{palpite.centena}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.numBox}>
+                  <Text style={styles.numLabel}>Milhar</Text>
+                  <View style={styles.numValue}>
+                    <Text style={styles.numText}>{palpite.milhar}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.phraseBox}>
+                <Text style={styles.phraseText}>{palpite.frase}</Text>
+              </View>
+
+              <View style={styles.watermarkBox}>
+                <Text style={styles.watermarkText}>Palpites do Bicho</Text>
+              </View>
+            </View>
+
+            {/* Botões de Ação */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                style={styles.actionBtn}
+                onPress={compartilhar}
+                disabled={isLoading}
+                activeOpacity={0.7}>
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.actionBtnText}>📤 Compartilhar</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.actionBtnGreen]}
+                onPress={() => {
+                  setPalpiteGerado(false);
+                  setPalpite({
+                    dezena: "",
+                    centena: "",
+                    milhar: "",
+                    animal: "",
+                    frase: "",
+                    legenda: "",
+                    imagem: "",
+                  });
+                }}
+                activeOpacity={0.7}>
+                <Text style={styles.actionBtnText}>🔄 Novo Palpite</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Banner */}
+            <View style={styles.bannerContainer}>
               <TouchableOpacity onPress={() => Linking.openURL('https://bit.ly/palpitesdobichoad')}>
                 <Image source={banner2} style={styles.banner} />
               </TouchableOpacity>
             </View>
-          )}
-        </View>
+          </>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  mainContainer: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 60,
   },
-  headerGradient: {
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
+    padding: 16,
+    paddingBottom: 30,
   },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  whiteCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  instructionCard: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  instructionTitle: {
+  cardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 10,
+    color: colors.primary,
     textAlign: 'center',
+    marginBottom: 10,
   },
-  instructionText: {
+  cardText: {
     fontSize: 15,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
-  generateButton: {
-    width: '90%',
-    marginBottom: 15,
-    borderRadius: 15,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  generateButtonGradient: {
-    paddingVertical: 18,
+  bigButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  generateButtonText: {
+  bigButtonText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
   },
-  viewAnimalsButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+  smallButton: {
     backgroundColor: colors.primaryLight,
-    marginBottom: 15,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    alignItems: 'center',
   },
-  viewAnimalsButtonText: {
+  smallButtonDanger: {
+    backgroundColor: '#f44336',
+  },
+  smallButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-  },
-  animalsContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  animalsTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 15,
   },
   animalsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
-  banner: {
-    width: 350,
-    height: 175,
-    marginVertical: 15,
-    resizeMode: 'contain',
-    borderRadius: 10,
-  },
-  resultContainer: {
-    width: '100%',
-  },
-  resultGradient: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-  },
-  resultHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  resultTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.primary,
-    marginBottom: 5,
-  },
-  resultDate: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  animalSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  animalImage: {
-    width: 150,
-    height: 150,
+  animalCard: {
+    width: '48%',
     marginBottom: 10,
   },
-  animalName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.primary,
+  bannerContainer: {
+    marginVertical: 16,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  numbersContainer: {
+  banner: {
+    width: '100%',
+    height: 160,
+  },
+  resultCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  resultHeader: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  resultHeaderTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  resultHeaderDate: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  animalSection: {
+  alignItems: 'center',
+  marginBottom: 24,
+},
+animalCircle: {
+  width: 160,
+  height: 160,
+  backgroundColor: colors.primaryLight,
+  borderRadius: 80,
+  padding: 20,
+  marginBottom: 16,
+  justifyContent: 'center',
+  alignItems: 'center',
+  shadowColor: colors.primary,
+  shadowOffset: {
+    width: 0,
+    height: 4,
+  },
+  shadowOpacity: 0.3,
+  shadowRadius: 6,
+  elevation: 8,
+  borderWidth: 4,
+  borderColor: '#fff',
+},
+animalImg: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 60,
+},
+animalNameText: {
+  fontSize: 28,
+  fontWeight: '800',
+  color: colors.primary,
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+},
+  numbersRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 20,
   },
-  numberBox: {
+  numBox: {
     alignItems: 'center',
     flex: 1,
-    marginHorizontal: 5,
   },
-  numberLabel: {
+  numLabel: {
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 8,
     fontWeight: '600',
   },
-  numberValue: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    minWidth: 70,
+  numValue: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minWidth: 60,
     alignItems: 'center',
   },
-  numberText: {
-    fontSize: 22,
+  numText: {
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
   },
-  phraseContainer: {
+  phraseBox: {
     backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 12,
   },
   phraseText: {
     fontSize: 14,
@@ -550,53 +543,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  watermark: {
-    alignItems: 'center',
-    paddingTop: 10,
+  watermarkBox: {
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    alignItems: 'center',
   },
   watermarkText: {
     fontSize: 12,
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  actionsContainer: {
+  actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  actionButton: {
+  actionBtn: {
     flex: 1,
-    marginHorizontal: 5,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  actionButtonGradient: {
-    flexDirection: 'row',
+    backgroundColor: '#25D366',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 4,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 15,
   },
-  actionButtonIcon: {
-    fontSize: 18,
-    marginRight: 8,
+  actionBtnGreen: {
+    backgroundColor: colors.primary,
   },
-  actionButtonText: {
+  actionBtnText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
   },
 });
+
 
 
 // Adicione as 365 frases abaixo. Por motivos de espaço, apresento aqui 100 frases. Você deve continuar o padrão para completar as 365 frases.

@@ -1,27 +1,27 @@
 // src/screens/Home/index.js
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  Linking,
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Image, 
+  ScrollView, 
+  Linking, 
   Platform,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'; // MUDANÇA AQUI
 import LinearGradient from 'react-native-linear-gradient';
 import logo from '../../images/logo.png';
 import bannerImage from '../../images/banner_2.png';
 import GradientButton from '../../components/GradientButton';
 import Card from '../../components/Card';
 import { colors } from '../../constants/colors';
-import {
-  InterstitialAd,
-  AdEventType,
-  TestIds,
+import { 
+  InterstitialAd, 
+  AdEventType, 
+  TestIds 
 } from 'react-native-google-mobile-ads';
 
 const interstitialAdUnitId = __DEV__
@@ -31,21 +31,13 @@ const interstitialAdUnitId = __DEV__
   : 'ca-app-pub-0562149345323036/9542002948';
 
 const adKeywords = [
-  'Aposta',
-  'Jogos',
-  'Loteria',
-  'Bingo',
-  'Futebol',
-  'Bet',
-  'Flamengo',
-  'Amazon',
-  'Shoppe',
-  'Aliexpress',
+  'Aposta', 'Jogos', 'Loteria', 'Bingo', 'Futebol',
+  'Bet', 'Flamengo', 'Amazon', 'Shoppe', 'Aliexpress'
 ];
 
 function Home({ navigation }) {
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
-  const [interstitial] = useState(() =>
+  const [interstitial] = useState(() => 
     InterstitialAd.createForAdRequest(interstitialAdUnitId, {
       keywords: adKeywords,
     })
@@ -57,14 +49,14 @@ function Home({ navigation }) {
     };
 
     const unsubscribeLoaded = interstitial.addAdEventListener(
-      AdEventType.LOADED,
+      AdEventType.LOADED, 
       () => {
         setInterstitialLoaded(true);
       }
     );
 
     const unsubscribeClosed = interstitial.addAdEventListener(
-      AdEventType.CLOSED,
+      AdEventType.CLOSED, 
       () => {
         setInterstitialLoaded(false);
         loadInterstitial();
@@ -73,7 +65,7 @@ function Home({ navigation }) {
     );
 
     const unsubscribeError = interstitial.addAdEventListener(
-      AdEventType.ERROR,
+      AdEventType.ERROR, 
       (error) => {
         console.error('Erro ao carregar o anúncio intersticial:', error);
         navigation.navigate('Resultados');
@@ -102,18 +94,18 @@ function Home({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <LinearGradient
-        colors={[colors.background, '#e8f5e9', '#f1f8f4']}
-        style={styles.gradient}>
+      <View style={styles.backgroundContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
           <View style={styles.container}>
             {/* Logo com Card */}
             <Card style={styles.logoCard}>
-              <Image source={logo} style={styles.logo} resizeMode="contain" />
+              <View style={styles.logoWrapper}>
+                <Image source={logo} style={styles.logo} resizeMode="contain" />
+              </View>
               <Text style={styles.header}>Gerador de Números</Text>
               <Text style={styles.subtitle}>
                 Seus palpites de sorte! 🍀
@@ -157,11 +149,14 @@ function Home({ navigation }) {
             </View>
 
             {/* Footer */}
-            <Text style={styles.footer}>
-            </Text>
+            <View style={styles.footerContainer}>
+              <Text style={styles.footer}>
+                Aproveite o aplicativo
+              </Text>
+            </View>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }
@@ -171,13 +166,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  gradient: {
+  backgroundContainer: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
     paddingVertical: 20,
     alignItems: 'center',
+    paddingBottom: 40, // ADICIONADO para evitar corte
   },
   container: {
     alignItems: 'center',
@@ -188,12 +185,18 @@ const styles = StyleSheet.create({
   logoCard: {
     alignItems: 'center',
     marginBottom: 10,
+    backgroundColor: colors.white,
+  },
+  logoWrapper: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 100,
+    padding: 10,
+    marginBottom: 15,
   },
   logo: {
-    width: 180,
-    height: 180,
-    marginBottom: 15,
-    borderRadius: 90,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
   },
   header: {
     fontSize: 28,
@@ -217,6 +220,7 @@ const styles = StyleSheet.create({
   bannerCard: {
     padding: 10,
     marginVertical: 15,
+    backgroundColor: colors.white,
   },
   banner: {
     width: '100%',
@@ -224,12 +228,18 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     borderRadius: 10,
   },
+  footerContainer: {
+    marginTop: 20,
+    marginBottom: 20, // ADICIONADO
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 20,
+  },
   footer: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.white,
     textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 10,
     fontWeight: '600',
   },
 });
