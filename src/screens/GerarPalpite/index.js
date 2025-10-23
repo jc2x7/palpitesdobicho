@@ -237,6 +237,7 @@ function GerarPalpite() {
                       key={animal.id}
                       animal={animal}
                       style={styles.animalCard}
+                      onPress={() => {}}
                     />
                   ))}
                 </View>
